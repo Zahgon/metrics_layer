@@ -63,7 +63,7 @@ class View(MetricsLayerBase, SQLReplacement):
         super().__init__(definition)
 
     def id(self):
-        return self.name
+        pass
 
     def secure_from_statement(self, query_type: str) -> str:
         """
@@ -79,235 +79,56 @@ class View(MetricsLayerBase, SQLReplacement):
             A secure FROM statement with access filters applied, or the base table/view reference
             if no access filters are present.
         """
-        from metrics_layer.core.sql.query_design import MetricsLayerDesign
-
-        self.design = MetricsLayerDesign(
-            no_group_by=False,
-            query_type=query_type,
-            field_lookup={},
-            topic=None,
-            model=self.model,
-            project=self.project,
-        )
-        access_filter_literal, access_filter_fields = self.design.get_access_filter(specific_view=self)
-        always_filter_literal = self._always_filter_literal()
-        if access_filter_fields:
-            for field in access_filter_fields:
-                if field.view.name != self.name:
-                    raise QueryError(
-                        f"Access filter with field {field.id()} in the view {self.name} is not supported in"
-                        " exploratory mode because the field is in a different view. Please use a derived"
-                        " table to join the views needed to apply access filter logic across multiple views."
-                    )
-        if access_filter_literal and always_filter_literal:
-            filter_literal = access_filter_literal + " and " + always_filter_literal
-        elif access_filter_literal and not always_filter_literal:
-            filter_literal = access_filter_literal
-        elif not access_filter_literal and always_filter_literal:
-            filter_literal = always_filter_literal
-        else:
-            filter_literal = None
-
-        # Get the base table reference - prioritize sql_table_name, then derived_table
-        if self.derived_table_sql:
-            base_clause = f"({self.derived_table_sql})"
-        elif self.sql_table_name:
-            base_clause = f"{self.sql_table_name}"
-        else:
-            raise QueryError(f"View {self.name} has neither sql_table_name nor derived_table defined")
-
-        if filter_literal:
-            return f"(select * from {base_clause} as {self.name} WHERE {filter_literal}) as {self.name}"
-        else:
-            return f"{base_clause} as {self.name}"
+        pass
 
     def _always_filter_literal(self):
-        to_add = {"week_start_day": self.model.week_start_day, "timezone": self.project.timezone}
-        parsed_filters = []
-        if self.always_filter:
-            for f in self.always_filter:
-                if "." in f["field"]:
-                    view_name = f["field"].split(".")[0]
-                    if view_name != self.name:
-                        raise QueryError(
-                            f"Always filter field {f['field']} in the view {self.name} is not supported in"
-                            " exploratory mode because it is in a different view. Please use a derived table"
-                            " to apply always filter logic across multiple views."
-                        )
-                if "." not in f["field"]:
-                    f["field"] = f"{self.name}.{f['field']}"
-                filter_dicts = Filter({**f, **to_add}).filter_dict(json_safe=False)
-                for filter_dict in filter_dicts:
-                    field_datatype = self.project.get_field(f["field"]).type
-                    parsed_filters.append(
-                        str(
-                            Filter.sql_query(
-                                f["field"],
-                                filter_dict["expression"],
-                                filter_dict["value"],
-                                field_datatype,
-                            )
-                        )
-                    )
-        if parsed_filters:
-            return " and ".join(parsed_filters)
-        return None
+        pass
 
     @property
     def sql_table_name(self):
-        if "sql_table_name" in self._definition:
-            resolved_table_name = self.resolve_sql_table_name(
-                str(self._definition["sql_table_name"]), self.project.looker_env
-            )
-            return self.sql_replacement_func(resolved_table_name)
-        return None
+        pass
 
     @property
     def hidden(self):
-        try:
-            model_is_hidden = self.model.hidden
-        except Exception:
-            model_is_hidden = False
-        return bool(self._definition.get("hidden", False)) or model_is_hidden
+        pass
 
     @property
     def identifiers(self):
-        if "identifiers" in self._definition:
-            if not isinstance(self._definition["identifiers"], list):
-                raise QueryError(
-                    f"The identifiers property, {self._definition['identifiers']} must be a list in the view"
-                    f" {self.name}"
-                )
-            for i in self._definition["identifiers"]:
-                if not isinstance(i, dict):
-                    raise QueryError(f"Identifier {i} in view {self.name} must be a dictionary")
-                elif "name" not in i:
-                    raise QueryError(f"Identifier in view {self.name} is missing the required name property")
-                elif "type" not in i:
-                    raise QueryError(
-                        f"Identifier {i['name']} in view {self.name} is missing the required type property"
-                    )
-                elif "identifiers" in i and not isinstance(i["identifiers"], list):
-                    raise QueryError(
-                        f"The identifiers property, {i['identifiers']} must be a list in the identifier"
-                        f" {i['name']} in view {self.name}"
-                    )
-                elif "identifiers" in i and isinstance(i["identifiers"], list):
-                    for identifier in i["identifiers"]:
-                        if not isinstance(identifier, dict):
-                            raise QueryError(
-                                f"Identifier {identifier} in the identifiers property of the identifier"
-                                f" {i['name']} in view {self.name} must be a dictionary"
-                            )
-                        elif "name" not in identifier:
-                            raise QueryError(
-                                f"Reference {identifier} in the identifiers property of identifier"
-                                f" {i['name']} in view {self.name} is missing the required name property. It"
-                                " should look like - name: 'identifier_name'"
-                            )
-                if "type" in i and i["type"] == IdentifierTypes.join:
-                    if "relationship" not in i:
-                        raise QueryError(
-                            f"Identifier {i['name']} in view {self.name} is missing the required relationship"
-                            f" property for the type: {IdentifierTypes.join}. Options are:"
-                            f" {ZenlyticJoinRelationship.options}"
-                        )
-                    elif i["relationship"] not in ZenlyticJoinRelationship.options:
-                        raise QueryError(
-                            f"Identifier {i['name']} in view {self.name} has an invalid relationship"
-                            f" property. Options are: {ZenlyticJoinRelationship.options}"
-                        )
-                    if "sql_on" not in i:
-                        raise QueryError(
-                            f"Identifier {i['name']} in view {self.name} is missing the required sql_on"
-                            f" property for the type: {IdentifierTypes.join}"
-                        )
-                    if "reference" not in i:
-                        raise QueryError(
-                            f"Identifier {i['name']} in view {self.name} is missing the required reference"
-                            f" property for the type: {IdentifierTypes.join}"
-                        )
-            return self._definition["identifiers"]
-        return []
+        pass
 
     @property
     def default_date(self):
-        if "default_date" in self._definition:
-            if "." not in str(self._definition["default_date"]):
-                return f'{self.name}.{self._definition["default_date"]}'
-            return str(self._definition["default_date"])
-        return None
+        pass
 
     @property
     def derived_table_sql(self):
-        if "derived_table" in self._definition:
-            return self.sql_replacement_func(str(self._definition["derived_table"]["sql"]))
-        return None
+        pass
 
     @property
     def event_dimension(self):
-        if "event_dimension" in self._definition:
-            if "." not in str(self._definition["event_dimension"]):
-                return f'{self.name}.{self._definition["event_dimension"]}'
-            return str(self._definition["default_date"])
-        return None
+        pass
 
     @property
     def model(self) -> "Model":
-        try:
-            if "model_name" in self._definition:
-                model: Model = self.project.get_model(self._definition["model_name"])
-                return model
-            elif "model" in self._definition:
-                model: Model = self._definition["model"]
-                return model
-            else:
-                raise AccessDeniedOrDoesNotExistException(
-                    f"Could not find or you do not have access to model {self.model_name}",
-                    object_name=self.model_name,
-                    object_type="model",
-                )
-        except AccessDeniedOrDoesNotExistException as e:
-            e.message = str(e) + f" in view {self.name}"
-            raise e
+        pass
 
     @property
     def week_start_day(self):
-        model = self.model
-        if model:
-            if model and model.week_start_day:
-                return model.week_start_day.lower()
-        return "monday"
+        pass
 
     def sql_hash(self):
-        if self.derived_table_sql:
-            sql_definition = self.derived_table_sql
-        else:
-            sql_definition = self.sql_table_name
-
-        if sql_definition is not None:
-            result = hashlib.md5(sql_definition.encode("utf-8"))  # nosec
-            return result.hexdigest()
-        return None
+        pass
 
     def sql_replacement_func(self, sql: str):
-        return self.jinja_replacements(sql, {"user_attributes": self.project._user})
+        pass
 
     @staticmethod
     def jinja_replacements(sql: str, replaceable_attributes: dict) -> str:
         # Replace jinja with the replaceable attrs here
-        if not sql or "{{" not in str(sql):
-            return sql
-
-        try:
-            template = Template(sql, undefined=StrictUndefined)
-            return template.render(**replaceable_attributes)
-        except Exception:
-            # If jinja templating fails, return the original SQL
-            return sql
+        pass
 
     def get_identifier(self, identifier_name: str):
-        return next((i for i in self.identifiers if i["name"] == identifier_name), None)
+        pass
 
     def validate(self, definition: dict):
         required_keys = ["name", "fields"]
@@ -329,16 +150,11 @@ class View(MetricsLayerBase, SQLReplacement):
         """This method checks if the view is affected by any access filters
         the current user (set in the Project object) has on him/herself.
         """
-        if self.access_filters:
-            for condition_set in self.access_filters:
-                user_attribute_value = condition_set["user_attribute"]
-                if self.project._user and self.project._user.get(user_attribute_value):
-                    return True
-        return False
+        pass
 
     @property
     def primary_key(self):
-        return next((f for f in self.fields(expand_dimension_groups=True) if f.primary_key), None)
+        pass
 
     def _error(self, element, error, extra: dict = {}):
         line, column = self.line_col(element)
@@ -1211,54 +1027,17 @@ class View(MetricsLayerBase, SQLReplacement):
 
     def _field_name_to_remove(self, field_expr: str):
         # Skip the initial - sign
-        field_clean_expr = field_expr[1:]
-        if "." in field_clean_expr:
-            view_name, field_name = field_clean_expr.split(".")
-            if view_name == self.name:
-                return field_name
-            return None
-        return field_clean_expr
+        pass
 
     def resolve_sql_table_name(self, sql_table_name: str, looker_env: Union[str, None]):
-        if "-- if" in sql_table_name:
-            return self._resolve_conditional_sql_table_name(sql_table_name, looker_env)
-        if "ref(" in sql_table_name:
-            return self._resolve_dbt_ref_sql_table_name(sql_table_name)
-        return sql_table_name
+        pass
 
     def _resolve_dbt_ref_sql_table_name(self, sql_table_name: str):
-        ref_arguments = sql_table_name[sql_table_name.find("ref(") + 4 : sql_table_name.find(")")]
-        ref_value = ref_arguments.replace("'", "")
-        return self.project.resolve_dbt_ref(ref_value)
+        pass
 
     @staticmethod
     def _resolve_conditional_sql_table_name(sql_table_name: str, looker_env: Union[str, None]):
-        start_cond, end_cond = "-- if", "--"
-
-        # Find the condition that is chosen in the looker env
-        conditions = re.findall(f"{start_cond}([^{end_cond}]*){end_cond}", sql_table_name)
-        try:
-            condition = next((cond for cond in conditions if cond.strip() == looker_env))
-        except StopIteration:
-            raise QueryError(
-                f"""Your sql_table_name: '{sql_table_name}' contains a conditional and
-                we could not match that to the conditional value you passed: {looker_env}"""
-            )
-
-        full_phrase = start_cond + condition + end_cond
-
-        # Use regex to extract the value associated with the condition
-        searchable_sql_table_name = sql_table_name.replace("\n", "")
-        everything_between = f"{full_phrase}([^{end_cond}]*){end_cond}"
-        everything_after = f"(?<={full_phrase}).*"
-        result = re.search(everything_between, searchable_sql_table_name)
-        if result:
-            return result.group().replace(end_cond, "").strip()
-
-        result = re.search(everything_after, searchable_sql_table_name)
-        if result:
-            return result.group().strip()
-        return sql_table_name
+        pass
 
     def list_sets(self):
         if not isinstance(self.sets, list):

@@ -32,9 +32,7 @@ class MetricsLayerBase:
 
     @staticmethod
     def normalize_name(name):
-        if isinstance(name, str):
-            return name.lower()
-        return name
+        pass
 
     @staticmethod
     def valid_name(name: str):

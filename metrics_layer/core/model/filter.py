@@ -25,7 +25,7 @@ class LiteralValueCriterion(Criterion):
         self.sql_query = sql_query
 
     def get_sql(self, **kwargs):
-        return self.sql_query
+        pass
 
 
 class MetricsLayerFilterGroupLogicalOperatorType:
@@ -75,10 +75,7 @@ class MetricsLayerFilterExpressionType(str, Enum):
 
     @classmethod
     def parse(cls, value: str):
-        try:
-            return next(e for e in cls if e.value.lower() == value)
-        except StopIteration:
-            return cls.Unknown
+        pass
 
 
 class FilterInterval(str, Enum):
@@ -105,14 +102,11 @@ class FilterInterval(str, Enum):
 
     @classmethod
     def all(cls):
-        return [i for e in cls for i in [e.value.lower(), f"{e.value.lower()}s"]]
+        pass
 
     @classmethod
     def parse(cls, value: str):
-        try:
-            return next(e for e in cls if value in {e.value.lower(), f"{e.value.lower()}s"})
-        except StopIteration:
-            return cls.unknown
+        pass
 
 
 class Filter(MetricsLayerBase):
@@ -498,47 +492,7 @@ class Filter(MetricsLayerBase):
         else_0: bool = False,
         sql_replacement_func: Callable = lambda x: x,
     ):
-        case_sql = "case when "
-        conditions = []
-        for f in filters:
-            # All filters must have both of these keys, otherwise they are invalid
-            if not all(k in f for k in ["field", "value"]):
-                continue
-
-            if "." not in f["field"]:
-                field_id = f'{view.name}.{f["field"]}'
-            else:
-                field_id = f["field"]
-            try:
-                field = view.project.get_field(field_id)
-                field_datatype = field.type
-            except Exception:
-                field_datatype = "unknown"
-            value = sql_replacement_func(f["value"])
-            filter_dict = Filter._filter_dict(f["field"], value, f.get("week_start_day"), f.get("timezone"))
-            if isinstance(filter_dict, dict):
-                filter_list = [filter_dict]
-            else:
-                filter_list = filter_dict
-
-            for filter_obj in filter_list:
-                if filter_obj != {}:
-                    field_reference = "${" + f["field"] + "}"
-                    condition_value = Filter.sql_query(
-                        field_reference, filter_obj["expression"], filter_obj["value"], field_datatype
-                    )
-                    condition = f"{condition_value}"
-                    conditions.append(condition)
-
-        # Add the filter conditions AND'd together
-        case_sql += " and ".join(conditions)
-        # Add the result from the sql arg + imply NULL for anything not hitting the filter condition
-        if else_0:
-            case_sql += f" then {sql} else 0 end"
-        else:
-            case_sql += f" then {sql} end"
-
-        return case_sql
+        pass
 
     @staticmethod
     def sql_query(sql_to_compare: str, expression_type: str, value, field_datatype: str):

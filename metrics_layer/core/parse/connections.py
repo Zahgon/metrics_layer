@@ -449,24 +449,7 @@ class BigQueryConnection(BaseConnection):
 
     @staticmethod
     def _convert_json_if_needed(creds: dict, kwargs: dict):
-        if isinstance(creds, dict):
-            return deepcopy(creds)
-        elif isinstance(creds, str):
-            try:
-                return json.loads(creds)
-            except json.JSONDecodeError:
-                # This means it's a file path not a JSON string
-                if os.path.isabs(creds):
-                    path = creds
-                else:
-                    path = os.path.join(kwargs["directory"], creds)
-
-                with open(path, "r") as f:
-                    return json.load(f)
-        else:
-            raise MetricsLayerException(
-                f"BigQuery credentials json had wrong type: {type(creds)} for value {creds}"
-            )
+        pass
 
 
 class TeradataConnection(BaseConnection):

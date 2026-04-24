@@ -42,11 +42,11 @@ class Join(MetricsLayerBase, SQLReplacement):
         super().__init__(definition)
 
     def replaced_sql_on(self, query_type: str):
-        return self.get_replaced_sql_on(self.sql_on, query_type, self.project)
+        pass
 
     @property
     def name(self):
-        return f"join between {self.base_view_name} and {self.join_view_name}"
+        pass
 
     def validate(self, definition: dict):
         required_keys = ["base_view_name", "join_view_name", "relationship", "type"]
@@ -153,19 +153,7 @@ class Join(MetricsLayerBase, SQLReplacement):
         return errors
 
     def is_valid(self):
-        if self.sql_on:
-            fields_to_replace = self.fields_to_replace(self.sql_on)
-
-            # The join isn't valid if we can't find an existing view with that name
-            for field in fields_to_replace:
-                view_name, _ = Field.field_name_parts(field)
-                if view_name not in self.explore.join_names():
-                    err_msg = f"Could not find view {view_name} for {self.name}"
-                    print(err_msg)
-                    return False
-            return True
-        is_valid = self.foreign_key is not None or self.type == "cross"
-        return is_valid
+        pass
 
     def required_views(self):
         if not self.sql_on:
@@ -178,44 +166,11 @@ class Join(MetricsLayerBase, SQLReplacement):
         return list(set(views))
 
     def required_joins(self):
-        if not self.sql_on:
-            return [self.explore.name, self.name]
-
-        joins = []
-        for field in self.fields_to_replace(self.sql_on):
-            join_name, _ = Field.field_name_parts(field)
-            joins.append(join_name)
-        return list(set(joins))
+        pass
 
     @staticmethod
     def get_replaced_sql_on(sql: str, query_type: str, project):
-        sql_on = copy(sql)
-        fields_to_replace = Join.fields_to_replace(sql_on)
-        for field in fields_to_replace:
-            view_name, column_name = Field.field_name_parts(field)
-            if view_name is None:
-                return
-
-            view = project.get_view(view_name)
-
-            if view is None:
-                return
-
-            table_name = view.name
-            field_obj = project.get_field(column_name, view_name=table_name)
-
-            if field_obj and table_name:
-                sql_condition = field_obj.sql_query(query_type)
-                replace_with = sql_condition
-            elif table_name:
-                replace_with = f"{table_name}.{column_name}"
-            else:
-                replace_with = column_name
-
-            replace_text = "${" + field + "}"
-            sql_on = sql_on.replace(replace_text, replace_with)
-
-        return sql_on
+        pass
 
     def field_names(self):
         # This function is for the explore `fields` parameter, to resolve all the sets into field names
@@ -231,13 +186,4 @@ class Join(MetricsLayerBase, SQLReplacement):
         return join_set.field_names()
 
     def join_fields(self, show_hidden: bool, expand_dimension_groups: bool, show_excluded: bool):
-        try:
-            view = self.project.get_view(self.from_)
-        except AccessDeniedOrDoesNotExistException:
-            # If the user does not have access to the view, there are obviously no fields to show them
-            return []
-        fields = view.fields(show_hidden, expand_dimension_groups)
-        join_field_names = self.field_names()
-        if join_field_names and not show_excluded:
-            return [f for f in fields if f.id() in join_field_names]
-        return fields
+        pass

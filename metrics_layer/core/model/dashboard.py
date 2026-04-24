@@ -46,15 +46,11 @@ class DashboardElement(MetricsLayerBase):
 
     @property
     def slice_by(self):
-        return self._definition.get("slice_by", [])
+        pass
 
     @property
     def metrics(self):
-        if "metric" in self._definition:
-            metric_input = self._definition["metric"]
-        else:
-            metric_input = self._definition.get("metrics", [])
-        return [metric_input] if isinstance(metric_input, str) else metric_input
+        pass
 
     def _raw_filters(self):
         if self.filters is None:
@@ -120,9 +116,7 @@ class Dashboard(MetricsLayerBase):
 
     @property
     def label(self):
-        if self._definition.get("label"):
-            return self._definition.get("label")
-        return self.name.replace("_", " ").title()
+        pass
 
     def validate(self, definition: dict):
         required_keys = ["name", "layout"]
@@ -192,7 +186,4 @@ class Dashboard(MetricsLayerBase):
         return [DashboardElement(e, dashboard=self, project=self.project) for e in elements]
 
     def _missing_filter_explore_error(self, filter_obj: dict):
-        return (
-            f"Argument 'explore' not found in the the filter {filter_obj} on dashboard "
-            f"{self.name}. The 'explore' argument is required on filters for the whole dashboard."
-        )
+        pass

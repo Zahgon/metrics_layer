@@ -58,9 +58,7 @@ class MetricsLayerConnection:
 
     @property
     def project(self):
-        if self._project is None:
-            raise QueryError("You must call the load() method before accessing the project.")
-        return self._project
+        pass
 
     def get_branch_options(self):
         if self.branch_options is None:
@@ -68,12 +66,11 @@ class MetricsLayerConnection:
         return self.branch_options
 
     def add_connections(self, additional_raw_connections: list):
-        self._raw_connections = self._raw_connections + additional_raw_connections
+        pass
 
     @property
     def connections(self):
-        self._connections = ProjectLoader.load_connections(self._raw_connections)
-        return self._connections
+        pass
 
     def list_connections(self, names_only=False):
         connections = self.connections
@@ -95,19 +92,7 @@ class MetricsLayerConnection:
         sql: str = None,
         **kwargs,
     ):
-        query, connection = self.get_sql_query(
-            sql=sql,
-            metrics=metrics,
-            dimensions=dimensions,
-            funnel=funnel,
-            where=where,
-            having=having,
-            order_by=order_by,
-            **{**self.kwargs, **kwargs},
-            return_connection=True,
-        )
-        df = self.run_query(query, connection, **kwargs)
-        return df
+        pass
 
     def get_sql_query(
         self,
@@ -121,55 +106,7 @@ class MetricsLayerConnection:
         merged_queries: list = [],
         **kwargs,
     ):
-        if sql:
-            converter = MQLConverter(
-                sql, project=self.project, connections=self.connections, **{**self.kwargs, **kwargs}
-            )
-            connection = converter.connection
-            query = converter.get_query()
-        elif metrics or dimensions:
-            resolver = SQLQueryResolver(
-                metrics=metrics,
-                dimensions=dimensions,
-                funnel=funnel,
-                where=where,
-                having=having,
-                order_by=order_by,
-                project=self.project,
-                connections=self.connections,
-                **{**self.kwargs, **kwargs},
-            )
-            connection = resolver.connection
-            query = resolver.get_query()
-        elif len(merged_queries) > 0:
-            # This kwarg is meaningless in the context of the merged query resolver
-            # But it can mess up sub queries if it's not popped here
-            kwargs.pop("merged_result", None)
-            resolver = ArbitraryMergedQueryResolver(
-                merged_queries=merged_queries,
-                where=where,
-                having=having,
-                order_by=order_by,
-                project=self.project,
-                connections=self.connections,
-                **{**self.kwargs, **kwargs},
-            )
-            connection = resolver.connection
-            query = resolver.get_query()
-        else:
-            raise QueryError(
-                'No metrics or dimensions specified. Please provide either "metrics" or "dimensions"'
-            )
-
-        if kwargs.get("pretty", False):
-            query = self.pretty_sql(query)
-
-        if kwargs.get("return_connection", False):
-            return query, connection
-
-        if kwargs.get("return_query_kind", False):
-            return query, resolver.query_kind
-        return query
+        pass
 
     def list_fields(self, view_name: str = None, names_only: bool = False, show_hidden: bool = False):
         all_fields = self.project.fields(view_name=view_name, show_hidden=show_hidden)
@@ -233,13 +170,10 @@ class MetricsLayerConnection:
         return self.project.get_model(model_name)
 
     def list_dashboards(self, names_only=False):
-        dashboards = self.project.dashboards()
-        if names_only:
-            return [d.name for d in dashboards]
-        return dashboards
+        pass
 
     def get_dashboard(self, dashboard_name: str):
-        return self.project.get_dashboard(dashboard_name)
+        pass
 
     def get_all_profiles(self, names_only: bool = False):
         raise NotImplementedError()
@@ -250,4 +184,4 @@ class MetricsLayerConnection:
 
     @staticmethod
     def pretty_sql(sql: str, keyword_case="lower"):
-        return sqlparse.format(sql, reindent=True, keyword_case=keyword_case)
+        pass

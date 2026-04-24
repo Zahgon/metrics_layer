@@ -47,7 +47,7 @@ class AccessGrant(MetricsLayerBase):
                 raise QueryError(f"Access Grant{name_str} missing required key {k}")
 
     def id(self):
-        return self.name
+        pass
 
     def _error(self, element, error):
         return self.model._error(element, error)
@@ -132,17 +132,15 @@ class Model(MetricsLayerBase):
                 raise QueryError(f"Model missing required key {k}{name_str}")
 
     def id(self):
-        return self.name
+        pass
 
     @property
     def fiscal_month_offset(self):
-        if "fiscal_month_offset" in self._definition:
-            return self._definition["fiscal_month_offset"]
-        return 0
+        pass
 
     @property
     def hidden(self) -> bool:
-        return bool(self._definition.get("hidden", False))
+        pass
 
     @property
     def access_grants(self):
@@ -158,47 +156,11 @@ class Model(MetricsLayerBase):
 
     @property
     def relationships(self):
-        if "relationships" in self._definition:
-            if not isinstance(self._definition["relationships"], list):
-                raise QueryError(
-                    f"The relationships property, {self._definition['relationships']} must be a list in "
-                    f"the model {self.name}"
-                )
-            elif not all([isinstance(rel, dict) for rel in self._definition["relationships"]]):
-                raise QueryError(
-                    f"All relationships in the relationships property must be dictionaries in the model "
-                    f"{self.name}"
-                )
-            return self._definition["relationships"]
-        return []
+        pass
 
     @property
     def mappings(self):
-        mappings = json.loads(json.dumps(self._definition.get("mappings", {})))
-
-        if not isinstance(mappings, dict):
-            raise QueryError(f"The mappings property, {mappings} must be a dictionary")
-
-        for date_mapping in self.special_mapping_values:
-            if date_mapping in mappings:
-                raise QueryError(
-                    f"The mapping name {date_mapping} is a reserved name and cannot be used as a mapping name"
-                )
-            description = (
-                f"The {date_mapping} associated with the metric or metrics you have "
-                "in your query. When in doubt, use this to trend metrics over time."
-            )
-            all_canon_dates = [f.canon_date for f in self.project.fields()]
-            unique_canon_dates = Counter(all_canon_dates).most_common()
-            fields_mapped = []
-            for d, _ in unique_canon_dates:
-                canon_date_id = f"{d}_{date_mapping}"
-                if d is not None and self.project.does_field_exist(canon_date_id):
-                    fields_mapped.append(canon_date_id)
-            # Includes all canon_dates in the project, sorted by number of occurrences in the project
-            map_data = {"fields": fields_mapped, "group_label": "Dates", "description": description}
-            mappings[date_mapping] = map_data
-        return mappings
+        pass
 
     def _error(self, element, error, extra: dict = {}):
         line, column = self.line_col(element)
@@ -457,20 +419,7 @@ class Model(MetricsLayerBase):
             - relationship: str
             - sql_on: str
         """
-        if not self.relationships:
-            return []
-
-        if view_name is None:
-            # Return all relationships
-            return self.relationships
-
-        # Filter relationships by view_name
-        filtered_relationships = []
-        for rel in self.relationships:
-            if rel.get("from_table") == view_name or rel.get("join_table") == view_name:
-                filtered_relationships.append(rel)
-
-        return filtered_relationships
+        pass
 
     def get_mappings(self, dimensions_only: bool = False):
         if self.mappings is None:

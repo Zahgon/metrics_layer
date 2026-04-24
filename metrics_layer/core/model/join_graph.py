@@ -43,9 +43,7 @@ class JoinGraph(SQLReplacement):
 
     @property
     def graph(self):
-        if self._graph is None:
-            self._graph = self.build()
-        return self._graph
+        pass
 
     def list_join_graphs(self):
         graph = self.project.join_graph.graph
@@ -138,59 +136,7 @@ class JoinGraph(SQLReplacement):
         return Join(join_definition, project=self.project)
 
     def build(self):
-        graph = networkx.DiGraph()
-        identifier_map, primary_keys = self._identifier_map()
-        self.composite_keys = self._composite_keys(primary_keys)
-        reference_map = self._reference_map()
-        views_seen = set()
-        for view in self.project.views():
-            if view.name in views_seen:
-                raise QueryError(
-                    f"Duplicate view names found in your project for the name {view.name}."
-                    " Please make sure all view names are unique (note: join_as on identifiers "
-                    "will create a view under its that name and the name must be unique)."
-                )
-            views_seen.add(view.name)
-            graph.add_node(view.name)
-            if view.name in reference_map:
-                # Add all explicit "join" type references
-                for join_view_name, join_identifier in reference_map[view.name].items():
-                    graph.add_edge(view.name, join_view_name, **join_identifier)
-
-            for identifier in view.identifiers:
-                only_join = identifier.get("only_join", [])
-                # Add all identifier matches across other views
-                for join_view_name in identifier_map.get(identifier["name"], []):
-                    if join_view_name != view.name and self._allowed_join(only_join, join_view_name):
-                        join_view = self.project.get_view(join_view_name)
-                        join_identifier = join_view.get_identifier(identifier["name"])
-                        join_only_join = join_identifier.get("only_join", [])
-                        if not self._allowed_join(join_only_join, view.name):
-                            continue
-
-                        join_info = self._identifier_to_join(
-                            first_identifier=identifier,
-                            first_view_name=view.name,
-                            second_identifier=join_identifier,
-                            second_view_name=join_view_name,
-                        )
-                        is_fanout = self._is_fanout(join_info["relationship"])
-                        if is_fanout and join_view_name not in identifier.get("allowed_fanouts", []):
-                            continue
-
-                        # Make sure the new join is preferable to the old one
-                        if graph.has_edge(view.name, join_view_name):
-                            existing = graph[view.name][join_view_name]["relationship"]
-                            existing_score = self._join_preference.index(existing)
-                            new_score = self._join_preference.index(join_info["relationship"])
-                            # Only if the new identifier gives us a more preferable join will we change
-                            if existing_score > new_score:
-                                graph.add_edge(view.name, join_view_name, **join_info)
-                        else:
-                            graph.add_edge(view.name, join_view_name, **join_info)
-
-        # print(networkx.to_dict_of_dicts(graph))
-        return graph
+        pass
 
     def merged_results_graph(self, model):
         if self._merged_result_graph is None:
@@ -297,129 +243,39 @@ class JoinGraph(SQLReplacement):
         return field
 
     def _identifier_map(self):
-        result = defaultdict(list)
-        primary_keys = defaultdict(list)
-        for view in self.project.views():
-            for identifier in view.identifiers:
-                if identifier["type"] != IdentifierTypes.join:
-                    result[identifier["name"]].append(view.name)
-                    # Make an additional mapping from identifier name to view's where it's a primary key
-                    if identifier["type"] == IdentifierTypes.primary:
-                        primary_keys[identifier["name"]].append(view.name)
-
-        return result, primary_keys
+        pass
 
     def _composite_keys(self, primary_key_map: dict):
-        composite_keys = {}
-        for view in self.project.views():
-            for identifier in view.identifiers:
-                # For composite identifiers, we need to add the individual
-                # fields to indicate that they're part of the composite key
-                if identifier["type"] != IdentifierTypes.join and "identifiers" in identifier:
-                    composite_key_views = []
-                    for sub_identifier in identifier["identifiers"]:
-                        composite_key_views.append(primary_key_map.get(sub_identifier["name"], []))
-
-                    for view_group in product(*composite_key_views):
-                        composite_keys[tuple(sorted(view_group))] = view.name
-        return composite_keys
+        pass
 
     def _reference_map(self):
-        result = defaultdict(dict)
-        for view in self.project.views():
-            for identifier in view.identifiers:
-                if identifier["type"] == IdentifierTypes.join:
-                    join_identifier = json.loads(json.dumps(identifier))
-                    join_identifier["relationship"] = self._invert_relationship(
-                        join_identifier["relationship"]
-                    )
-                    # We need to invert the join here because this is the inverse
-                    # direction of how the join was defined
-                    result[view.name][identifier["reference"]] = self._verify_identifier_join(identifier)
-
-                    # We only want to invert the join by default if it's *not* a fanout join
-                    if not self._is_fanout(join_identifier["relationship"]):
-                        result[identifier["reference"]][view.name] = self._verify_identifier_join(
-                            join_identifier
-                        )
-
-        return result
+        pass
 
     def _identifier_to_join(self, first_identifier, first_view_name, second_identifier, second_view_name):
-        relationship = self._derive_relationship(first_identifier, second_identifier)
-        join_type = ZenlyticJoinType.left_outer
-        first_clause = self._identifier_join_clause(first_identifier, first_view_name)
-        second_clause = self._identifier_join_clause(second_identifier, second_view_name)
-        sql_on = f"{first_clause}={second_clause}"
-        weight = self._edge_weight(relationship)
-        return {"relationship": relationship, "type": join_type, "sql_on": sql_on, "weight": weight}
+        pass
 
     def _identifier_join_clause(self, identifier: dict, view_name: str):
-        if "sql" in identifier:
-            cleaned_sql = copy(str(identifier["sql"]))
-            for field_name in self.fields_to_replace(str(identifier["sql"])):
-                to_replace = "${" + field_name + "}"
-                if field_name != "TABLE" and "." not in field_name:
-                    cleaned_reference = "${" + f"{view_name}.{field_name}" + "}"
-                    cleaned_sql = cleaned_sql.replace(to_replace, cleaned_reference)
-                if field_name == "TABLE":
-                    cleaned_sql = cleaned_sql.replace(to_replace, view_name)
-            clause = cleaned_sql
-        else:
-            clause = "${" + f"{view_name}.{identifier['name']}" + "}"
-        return clause
+        pass
 
     def _verify_identifier_join(self, join: dict):
-        clean_join = json.loads(json.dumps(join))
-        clean_join["type"] = join.get("type", ZenlyticJoinType.left_outer)
-        clean_join["relationship"] = join.get("relationship", ZenlyticJoinRelationship.many_to_one)
-        clean_join["sql_on"] = join["sql_on"]
-        clean_join["weight"] = self._edge_weight(clean_join["relationship"])
-        return clean_join
+        pass
 
     @staticmethod
     def _derive_relationship(identifier, join_identifier):
-        base_type = identifier["type"]
-        join_type = join_identifier["type"]
-        if base_type == IdentifierTypes.foreign and join_type == IdentifierTypes.primary:
-            return ZenlyticJoinRelationship.many_to_one
-        elif base_type == IdentifierTypes.primary and join_type == IdentifierTypes.primary:
-            return ZenlyticJoinRelationship.one_to_one
-        elif base_type == IdentifierTypes.primary and join_type == IdentifierTypes.foreign:
-            return ZenlyticJoinRelationship.one_to_many
-        elif base_type == IdentifierTypes.foreign and join_type == IdentifierTypes.foreign:
-            return ZenlyticJoinRelationship.many_to_many
-        else:
-            raise QueryError(
-                "This join type cannot be determined from the identifier properties. "
-                f"Make sure you've set the properties correctly. Base type: {base_type},"
-                f" join type: {join_type}"
-            )
+        pass
 
     @staticmethod
     def _invert_relationship(relationship: str):
-        mapping = {
-            ZenlyticJoinRelationship.many_to_one: ZenlyticJoinRelationship.one_to_many,
-            ZenlyticJoinRelationship.one_to_many: ZenlyticJoinRelationship.many_to_one,
-            ZenlyticJoinRelationship.many_to_many: ZenlyticJoinRelationship.many_to_many,
-            ZenlyticJoinRelationship.one_to_one: ZenlyticJoinRelationship.one_to_one,
-        }
-        return mapping[relationship]
+        pass
 
     @staticmethod
     def _edge_weight(relationship: str):
-        mapping = {
-            ZenlyticJoinRelationship.many_to_one: 2,
-            ZenlyticJoinRelationship.one_to_many: 3,
-            ZenlyticJoinRelationship.many_to_many: 4,
-            ZenlyticJoinRelationship.one_to_one: 1,
-        }
-        return mapping[relationship]
+        pass
 
     @staticmethod
     def _allowed_join(only_join: list, view_name: str):
-        return not only_join or (only_join and view_name in only_join)
+        pass
 
     @staticmethod
     def _is_fanout(relationship: str):
-        return relationship in {ZenlyticJoinRelationship.one_to_many, ZenlyticJoinRelationship.many_to_many}
+        pass

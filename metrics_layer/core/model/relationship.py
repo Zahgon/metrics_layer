@@ -44,15 +44,15 @@ class Relationship(MetricsLayerBase, SQLReplacement):
     @property
     def name(self):
         """Return a descriptive name for this relationship."""
-        return f"relationship between {self.from_table} and {self.join_table}"
+        pass
 
     @property
     def relationship(self):
-        return self._definition.get("relationship", ZenlyticJoinRelationship.many_to_one)
+        pass
 
     @property
     def join_type(self):
-        return self._definition.get("join_type", ZenlyticJoinType.left_outer)
+        pass
 
     def _error(self, element, error, extra: dict = {}):
         """Generate an error dictionary with context about this relationship."""
@@ -186,16 +186,4 @@ class Relationship(MetricsLayerBase, SQLReplacement):
 
     @staticmethod
     def static_sql_validation(sql_on: str, query_type: str, model):
-        errors = []
-        errors.extend(
-            Join.validate_sql_on_references(sql_on, f"relationship {sql_on}", model.project, lambda s, x: x)
-        )
-
-        sqlglot_sql_flavor = sql_flavor_to_sqlglot_format(query_type)
-        replaced_sql = Join.get_replaced_sql_on(sql_on, query_type, model.project)
-        try:
-            sqlglot.parse_one(replaced_sql, read=sqlglot_sql_flavor)
-        except Exception as e:
-            errors.append(str(e))
-
-        return errors
+        pass

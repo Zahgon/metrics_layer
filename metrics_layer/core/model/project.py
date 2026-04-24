@@ -59,91 +59,36 @@ class Project:
         return self._content_hash + hash(user_str)
 
     def id(self):
-        return hash(self)
+        pass
 
     def refresh_cache(self):
         # Clear LRU Caches
-        self.fields.cache_clear()
-        self.get_field.cache_clear()
-        self.get_field_by_name.cache_clear()
-        self.get_field_by_tag.cache_clear()
-
-        # Clear physical caches
-        self._join_graph = None
+        pass
 
     @functools.cached_property
     def _content_hash(self):
-        model_str = json.dumps(self._models, sort_keys=True)
-        view_str = json.dumps(self._views, sort_keys=True)
-        dash_str = json.dumps(self._dashboards, sort_keys=True)
-        topic_str = json.dumps(self._topics, sort_keys=True)
-        conn_str = json.dumps(self.connection_lookup, sort_keys=True)
-        string_to_hash = model_str + view_str + dash_str + topic_str + conn_str + str(self.looker_env)
-        return hash(string_to_hash)
+        pass
 
     def set_user(self, user: dict):
         self._user = user
 
     def set_connection_schema(self, schema: str):
-        self._connection_schema = schema
+        pass
 
     def set_timezone(self, timezone: str):
-        self._timezone = timezone
+        pass
 
     def set_required_access_filter_user_attributes(self, user_attribute_names: List[str]):
-        if not isinstance(user_attribute_names, list):
-            raise QueryError("The required_access_filter_user_attributes must be a list of strings")
-        self._required_access_filter_user_attributes = user_attribute_names
+        pass
 
     def replace_field(self, field: dict, view_name: str, refresh_cache: bool = True):
-        view = next((v for v in self._views if v["name"] == view_name), None)
-        if view is None:
-            raise AccessDeniedOrDoesNotExistException(
-                f"Could not find a view matching the name {view_name}",
-                object_name=view_name,
-                object_type="view",
-            )
-
-        original_field_idx = next(
-            (idx for idx, f in enumerate(view["fields"]) if f["name"].lower() == field["name"].lower()),
-            None,
-        )
-        if original_field_idx is None:
-            raise AccessDeniedOrDoesNotExistException(
-                f"Could not find a field matching the name {field['name']} in view {view_name}",
-                object_name=field["name"],
-                object_type="field",
-            )
-        view["fields"][original_field_idx] = field
-
-        if refresh_cache:
-            self.refresh_cache()
+        pass
 
     def add_field(self, field: dict, view_name: str, refresh_cache: bool = True):
-        view = next((v for v in self._views if v["name"] == view_name), None)
-        if view is None:
-            raise AccessDeniedOrDoesNotExistException(
-                f"Could not find a view matching the name {view_name}",
-                object_name=view_name,
-                object_type="view",
-            )
-        # If the field already exists, then do not add it
-        if not any(f["name"].lower() == field["name"].lower() for f in view["fields"]):
-            view["fields"].append(field)
-        if refresh_cache:
-            self.refresh_cache()
+        pass
 
     def remove_field(self, field_name: str, view_name: str, refresh_cache: bool = True):
-        view = next((v for v in self._views if v["name"] == view_name), None)
-        if view is None:
-            raise AccessDeniedOrDoesNotExistException(
-                f"Could not find a view matching the name {view_name}",
-                object_name=view_name,
-                object_type="view",
-            )
-        view["fields"] = [f for f in view["fields"] if f["name"] != field_name]
-        if refresh_cache:
-            self.refresh_cache()
+        pass
 
     @property
     def timezone(self):
@@ -160,187 +105,14 @@ class Project:
 
     @property
     def join_graph(self):
-        if self._join_graph is None:
-            graph = JoinGraph(self)
-            graph.build()
-            self._join_graph = graph
-        return self._join_graph
+        pass
 
     def _handle_join_as_duplication(self, views: list, topics: list = []):
-        join_as_to_create = {}
-        from_views_to_create = {}
-        copied_views = json.loads(json.dumps(views))
-
-        # Handle join_as syntax in views
-        for v in copied_views:
-            for identifier in v.get("identifiers", []):
-                if "join_as" in identifier and identifier["type"] == "primary":
-                    # To assign the join ONLY to the new view, we need to
-                    # remove the identifier from the original view
-                    v["identifiers"] = [i for i in v["identifiers"] if i["name"] != identifier["name"]]
-
-                    # And we need to remove the join_as statement from the
-                    # identifier when we add it to the new view
-                    identifier_to_add = {**identifier}
-                    identifier_to_add.pop("join_as")
-                    if identifier["join_as"] not in join_as_to_create:
-                        view_args = {
-                            "identifiers": [identifier_to_add],
-                            "fields": json.loads(json.dumps(v.get("fields", []))),
-                        }
-                        if "join_as_label" in identifier:
-                            view_args["label"] = identifier["join_as_label"]
-
-                        if "join_as_field_prefix" in identifier:
-                            view_args["field_prefix"] = identifier["join_as_field_prefix"]
-                        elif "join_as_label" in identifier:
-                            view_args["field_prefix"] = identifier["join_as_label"]
-                        else:
-                            view_args["field_prefix"] = identifier["join_as"].replace("_", " ").title()
-
-                        include_metrics = identifier.get("include_metrics", False)
-                        if not include_metrics:
-                            view_args["fields"] = [
-                                f for f in view_args["fields"] if f.get("field_type") != "measure"
-                            ]
-
-                        join_as_to_create[identifier["join_as"]] = {**v, **view_args}
-
-                    else:
-                        if join_as_to_create[identifier["join_as"]]["name"] != v["name"]:
-                            raise QueryError(
-                                "You cannot have join_as with identical names on different views. "
-                                "Please rename your join_as statement on one of your views."
-                            )
-
-        # Handle 'from' syntax in topics
-        if topics:
-            for topic_dict in topics:
-                if "views" in topic_dict and isinstance(topic_dict["views"], dict):
-                    for alias_view_name, view_config in topic_dict["views"].items():
-                        if isinstance(view_config, dict) and "from" in view_config:
-                            from_view_name = view_config["from"]
-
-                            # Only create virtual view if alias is different from the original view name
-                            if alias_view_name != from_view_name:
-                                # Find the original view
-                                original_view = None
-                                for v in copied_views:
-                                    if v["name"] == from_view_name:
-                                        original_view = v
-                                        break
-
-                                if original_view and alias_view_name not in from_views_to_create:
-                                    # Create virtual view definition similar to join_as
-                                    virtual_view_definition = json.loads(json.dumps(original_view))
-                                    virtual_view_definition["name"] = alias_view_name
-
-                                    # Handle configuration options
-                                    if "label" in view_config:
-                                        virtual_view_definition["label"] = view_config["label"]
-
-                                    # Handle field prefix
-                                    if "field_prefix" in view_config:
-                                        virtual_view_definition["field_prefix"] = view_config["field_prefix"]
-                                    elif "label" in view_config:
-                                        virtual_view_definition["field_prefix"] = view_config["label"]
-                                    else:
-                                        virtual_view_definition["field_prefix"] = alias_view_name.replace(
-                                            "_", " "
-                                        ).title()
-
-                                    # Handle include_metrics (default True)
-                                    include_metrics = view_config.get("include_metrics", True)
-                                    if not include_metrics:
-                                        virtual_view_definition["fields"] = [
-                                            f
-                                            for f in virtual_view_definition.get("fields", [])
-                                            if f.get("field_type") != "measure"
-                                        ]
-
-                                    virtual_view_definition["fields"] = [
-                                        (
-                                            f
-                                            if "tags" not in f
-                                            else {
-                                                **f,
-                                                "tags": [
-                                                    t + " " + virtual_view_definition["field_prefix"]
-                                                    for t in f["tags"]
-                                                ],
-                                            }
-                                        )
-                                        for f in virtual_view_definition.get("fields", [])
-                                    ]
-                                    from_views_to_create[alias_view_name] = virtual_view_definition
-
-        # Add all created views to the list
-        for view_name, view in join_as_to_create.items():
-            copied_views.append({**view, "name": view_name})
-
-        for view_name, view in from_views_to_create.items():
-            copied_views.append({**view, "name": view_name})
-
-        return copied_views
+        pass
 
     @contextmanager
     def replace_objects(self, replaced_objects: list):
-        replaced_views, replaced_models, replaced_dashboards, replaced_topics = [], [], [], []
-        for dict_obj in replaced_objects:
-            if isinstance(dict_obj, dict):
-                if dict_obj.get("type") == "view":
-                    replaced_views.append(dict_obj)
-                elif dict_obj.get("type") == "model":
-                    replaced_models.append(dict_obj)
-                elif dict_obj.get("type") == "dashboard":
-                    replaced_dashboards.append(dict_obj)
-                elif dict_obj.get("type") == "topic":
-                    replaced_topics.append(dict_obj)
-                else:
-                    # We cannot use the object if it is not a view, model, dashboard or topic
-                    pass
-
-        # Replace model files
-        replaced_model_names = set([m.get("name") for m in replaced_models])
-        unchanged_models = [m for m in self._models if m.get("name") not in replaced_model_names]
-        current_models = json.loads(json.dumps(self._models))
-
-        # Replace view files
-        replaced_view_names = set([View.normalize_name(v.get("name")) for v in replaced_views])
-        unchanged_views = [
-            v for v in self._views if View.normalize_name(v.get("name")) not in replaced_view_names
-        ]
-        current_views = json.loads(json.dumps(self._views))
-
-        # Replace dashboard files
-        replaced_dashboard_names = set([Dashboard.normalize_name(d.get("name")) for d in replaced_dashboards])
-        unchanged_dashboards = [
-            d
-            for d in self._dashboards
-            if Dashboard.normalize_name(d.get("name")) not in replaced_dashboard_names
-        ]
-        current_dashboards = json.loads(json.dumps(self._dashboards))
-
-        # Replace topic files
-        replaced_topic_names = set([t.get("name", t.get("label")) for t in replaced_topics])
-        unchanged_topics = [
-            t for t in self._topics if t.get("name", t.get("label")) not in replaced_topic_names
-        ]
-        current_topics = json.loads(json.dumps(self._topics))
-
-        try:
-            self._models = unchanged_models + replaced_models
-            self._views = unchanged_views + replaced_views
-            self._dashboards = unchanged_dashboards + replaced_dashboards
-            self._topics = unchanged_topics + replaced_topics
-            self.refresh_cache()
-            yield
-        finally:
-            self._dashboards = current_dashboards
-            self._views = current_views
-            self._models = current_models
-            self._topics = current_topics
-            self.refresh_cache()
+        pass
 
     def validate_with_replaced_objects(
         self,
@@ -348,8 +120,7 @@ class Project:
         views_must_be_in_topics: bool = False,
         validate_topics: bool = True,
     ):
-        with self.replace_objects(replaced_objects):
-            return self.validate(views_must_be_in_topics, validate_topics)
+        pass
 
     def _error(self, error: str, extra: dict = {}):
         # For project level errors we cannot attribute a line or column
@@ -524,14 +295,7 @@ class Project:
         return self._all_dashboards()
 
     def get_dashboard(self, dashboard_name: str) -> Model:
-        try:
-            return next((d for d in self.dashboards() if d.name == dashboard_name))
-        except StopIteration:
-            raise AccessDeniedOrDoesNotExistException(
-                f"Could not find or you do not have access to dashboard {dashboard_name}",
-                object_name=dashboard_name,
-                object_type="dashboard",
-            )
+        pass
 
     def models(self, show_hidden: bool = True) -> list:
         models = []
@@ -666,7 +430,7 @@ class Project:
             )
 
     def get_joinable_views(self, view_name: str) -> List[str]:
-        return self.join_graph.get_joinable_view_names(view_name)
+        pass
 
     def get_joinable_views_including_topics(self, view_name: str) -> List[str]:
         joinable_no_topics = self.join_graph.get_joinable_view_names(view_name)
@@ -750,13 +514,7 @@ class Project:
         return view.fields(show_hidden, expand_dimension_groups)
 
     def joinable_fields(self, field_list: list, expand_dimension_groups: bool = False):
-        join_graph_options = set()
-        for field in field_list:
-            join_graph_options.update(field.join_graphs())
-
-        all_fields = self.fields(expand_dimension_groups=expand_dimension_groups)
-        field_options = [f for f in all_fields if any(j in join_graph_options for j in f.join_graphs())]
-        return field_options
+        pass
 
     @functools.lru_cache(maxsize=None)
     def get_field(
@@ -769,11 +527,7 @@ class Project:
         return self._matching_field_handler(matching_fields, field_name, view_name)
 
     def get_mapped_field(self, field_name: str, model: Model):
-        if model.mappings:
-            field_data = model.mappings.get(field_name.lower())
-            if field_data:
-                return {"name": field_name.lower(), **field_data}
-        return None
+        pass
 
     @functools.lru_cache(maxsize=None)
     def get_field_by_name(
@@ -805,11 +559,7 @@ class Project:
         view_name: Union[str, None] = None,
         model_name: Union[str, None] = None,
     ):
-        try:
-            self.get_field(field_name, view_name, model_name)
-            return True
-        except AccessDeniedOrDoesNotExistException:
-            return False
+        pass
 
     def _parse_field_and_view_name(self, field_name: str, view_name: Union[str, None]):
         # Handle the case where the view syntax is passed: view_name.field_name
@@ -851,20 +601,8 @@ class Project:
 
     def resolve_dbt_ref(self, ref_name: str):
         # This just returns the table name, assuming the schema will be set in the connection
-        if not self.manifest_exists:
-            if not self._connection_schema:
-                raise QueryError(
-                    "You must specify a schema in the connection to "
-                    "use references without a dbt project manifest"
-                )
-            return f"{self._connection_schema}.{ref_name}"
-        return self.manifest.resolve_name(ref_name, schema_override=self._connection_schema)
+        pass
 
     @staticmethod
     def deduplicate_fields(field_list: list):
-        result, running_field_list = [], []
-        for field in field_list:
-            if field.id() not in running_field_list:
-                running_field_list.append(field.id())
-                result.append(field)
-        return result
+        pass

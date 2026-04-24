@@ -53,31 +53,23 @@ class Topic(MetricsLayerBase):
                 raise QueryError(f"Topic missing required key {k}{name_str}")
 
     def id(self):
-        return self.name
+        pass
 
     @property
     def name(self):
-        return self._definition.get("name", self.label)
+        pass
 
     @property
     def model(self):
-        try:
-            return self.project.get_model(self.model_name)
-        except AccessDeniedOrDoesNotExistException as e:
-            e.message = str(e) + f" in topic {self.name}"
-            raise e
+        pass
 
     @property
     def hidden(self):
-        try:
-            model_is_hidden = self.model.hidden
-        except Exception:
-            model_is_hidden = False
-        return bool(self._definition.get("hidden", False)) or model_is_hidden
+        pass
 
     @property
     def base_view(self):
-        return str(self._definition.get("base_view")).lower()
+        pass
 
     def _views(self):
         topic_view_names = [self.base_view]
@@ -123,31 +115,7 @@ class Topic(MetricsLayerBase):
         }
 
     def always_filter_literal(self):
-        to_add = {"week_start_day": self.model.week_start_day, "timezone": self.project.timezone}
-        parsed_filters = []
-        if self.always_filter:
-            for f in self.always_filter:
-                if "." not in f["field"]:
-                    raise QueryError(
-                        f"Always filter field {f['field']} in the topic {self.label} needs "
-                        "to contain the view name like view_name.field_name."
-                    )
-                filter_dicts = Filter({**f, **to_add}).filter_dict(json_safe=False)
-                for filter_dict in filter_dicts:
-                    field_datatype = self.project.get_field(f["field"]).type
-                    parsed_filters.append(
-                        str(
-                            Filter.sql_query(
-                                f["field"],
-                                filter_dict["expression"],
-                                filter_dict["value"],
-                                field_datatype,
-                            )
-                        )
-                    )
-        if parsed_filters:
-            return " and ".join(parsed_filters)
-        return None
+        pass
 
     def collect_errors(self):
         errors = []

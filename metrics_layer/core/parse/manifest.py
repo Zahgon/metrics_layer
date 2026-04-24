@@ -39,19 +39,10 @@ class Manifest:
         return tables
 
     def _resolve_node(self, name: str):
-        key = next((k for k in self._definition["nodes"].keys() if name == k.split(".")[-1]), None)
-        if key is None:
-            raise QueryError(
-                f"Could not find the ref {name} in the co-located dbt project."
-                " Please check the name in your dbt project."
-            )
-        return self._definition["nodes"][key]
+        pass
 
     def resolve_name(self, name: str, schema_override=None):
-        node = self._resolve_node(name)
-        if schema_override is None:
-            return self._node_to_table(node)
-        return f"{schema_override}.{node['alias']}"
+        pass
 
     @staticmethod
     def _node_to_table(node: dict):

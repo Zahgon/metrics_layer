@@ -226,284 +226,73 @@ class Field(MetricsLayerBase, SQLReplacement):
         return f"<{self.__class__.__name__} name={self.id()}>"
 
     def id(self, capitalize_alias=False):
-        alias = self.alias()
-        if capitalize_alias:
-            alias = alias.upper()
-        return f"{self.view.name}.{alias}"
+        pass
 
     @property
     def valid_properties(self):
-        if self.field_type == ZenlyticFieldType.dimension:
-            dimension_only = (
-                "primary_key",
-                "tags",
-                "drill_fields",
-                "searchable",
-                "allow_higher_searchable_max",
-                "tiers",
-                "link",
-                "canon_date",
-                "case",
-            )
-            return self.shared_properties + dimension_only
-        elif self.field_type == ZenlyticFieldType.dimension_group:
-            dimension_group_only = (
-                "primary_key",
-                "searchable",
-                "allow_higher_searchable_max",
-                "tags",
-                "drill_fields",
-                "timeframes",
-                "intervals",
-                "sql_start",
-                "sql_end",
-                "convert_tz",
-                "convert_timezone",
-                "link",
-            )
-            return self.shared_properties + dimension_group_only
-        elif self.field_type == ZenlyticFieldType.measure:
-            measure_only = (
-                "sql_distinct_key",
-                "non_additive_dimension",
-                "canon_date",
-                "measure",
-                "is_merged_result",
-                "cumulative_where",
-                "update_where_timeframe",
-                "percentile",
-            )
-            return self.shared_properties + measure_only
-        else:
-            return self.shared_properties
+        pass
 
     @property
     def hidden(self):
-        return self._definition.get("hidden", False)
+        pass
 
     @property
     def result_type(self):
-        _type = self._definition.get("type")
-        if _type in {ZenlyticType.string, ZenlyticType.tier}:
-            return ZenlyticType.string
-        elif _type == ZenlyticType.yesno:
-            return ZenlyticType.yesno
-        elif _type == ZenlyticType.time:
-            return ZenlyticType.time
-        elif _type in {
-            ZenlyticType.number,
-            ZenlyticType.duration,
-            ZenlyticType.cumulative,
-            *ZenlyticType.measure_options,
-        }:
-            return ZenlyticType.number
-        # string is the default type if none is specified
-        return ZenlyticType.string
+        pass
 
     @property
     def sql(self):
-        definition = json.loads(json.dumps(self._definition))
-
-        if "sql" not in definition and "case" in definition:
-            definition["sql"] = self._translate_looker_case_to_sql(definition["case"])
-
-        if (
-            "sql" not in definition
-            and definition.get("field_type") == ZenlyticFieldType.measure
-            and definition.get("type") == "count"
-        ):
-            if self.view.primary_key:
-                definition["sql"] = self.view.primary_key.sql
-            else:
-                definition["sql"] = "*"
-
-        if "sql" in definition and (self.filters or self.non_additive_dimension):
-            if definition["sql"] == "*":
-                raise QueryError(
-                    "To apply filters to a count measure you must have the primary_key specified "
-                    "for the view. You can do this by adding the tag 'primary_key: true' to the "
-                    "necessary dimension"
-                )
-            # You cannot apply a filter to a field that is the same name
-            # as the field itself (this doesn't make sense)
-            filters_to_apply = [f for f in self.filters if f.get("field") != self.name]
-
-            else_0 = False
-            if non_additive_dimension := self.non_additive_dimension:
-                # We need to do else 0 if it's a numeric operation like sum, average, etc
-                # But we need to do else null if it is a non numeric op like count, count_distinct
-                else_0 = self.type not in {ZenlyticType.count, ZenlyticType.count_distinct}
-                if isinstance(self.non_additive_dimension, dict):
-                    filters_to_apply += [
-                        {
-                            "field": non_additive_dimension["name"],
-                            "value": LiteralValue(
-                                f"{self.non_additive_cte_alias()}.{self.non_additive_alias()}"
-                            ),
-                        }
-                    ]
-                if isinstance(non_additive_dimension.get("window_groupings", []), list):
-                    for window_grouping in non_additive_dimension.get("window_groupings", []):
-                        window_alias = window_grouping.replace(".", "_")
-                        filters_to_apply += [
-                            {
-                                "field": window_grouping,
-                                "value": LiteralValue(f"{self.non_additive_cte_alias()}.{window_alias}"),
-                            }
-                        ]
-            definition["sql"] = Filter.translate_looker_filters_to_sql(
-                definition["sql"],
-                filters_to_apply,
-                self.view,
-                else_0=else_0,
-                sql_replacement_func=self.sql_replacement_func,
-            )
-
-        if (
-            "sql" in definition
-            and definition.get("type") == "tier"
-            and "tiers" in definition
-            and isinstance(definition["tiers"], list)
-            and definition["tiers"]
-        ):
-            definition["sql"] = self._translate_looker_tier_to_sql(definition["sql"], definition["tiers"])
-
-        # We need to put parenthesis around yesno types
-        if "sql" in definition and definition.get("type") == "yesno":
-            definition["sql"] = f'({definition["sql"]})'
-
-        if "sql" in definition and isinstance(definition["sql"], str):
-            definition["sql"] = self._clean_sql_for_case(definition["sql"])
-
-        # Apply jinja replacements for user attributes
-        if "sql" in definition and isinstance(definition["sql"], str):
-            definition["sql"] = self.sql_replacement_func(definition["sql"])
-        return definition.get("sql")
+        pass
 
     @property
     def sql_start(self):
-        if "sql_start" in self._definition and isinstance(self._definition["sql_start"], str):
-            return self._clean_sql_for_case(self._definition["sql_start"])
-        return self._definition.get("sql_start")
+        pass
 
     @property
     def sql_end(self):
-        if "sql_end" in self._definition and isinstance(self._definition["sql_end"], str):
-            return self._clean_sql_for_case(self._definition["sql_end"])
-        return self._definition.get("sql_end")
+        pass
 
     @property
     def label(self):
-        if "label" in self._definition:
-            label = self._definition["label"]
-            if self.type == "time" and self.dimension_group:
-                formatted_label = f"{label} {self.dimension_group.replace('_', ' ').title()}"
-            elif self.type == "duration" and self.dimension_group:
-                label_list = label.split(" ")
-                if self.is_dynamic_field and label_list[0].lower() == "duplicate":
-                    label_prefix = label_list[0].title()
-                    label_suffix = " ".join(label_list[1:])
-                    formatted_label = (
-                        f"{label_prefix} {self.dimension_group.replace('_', ' ')} {label_suffix}"
-                    )
-                else:
-                    formatted_label = f"{self.dimension_group.replace('_', ' ').title()} {label}"
-            else:
-                formatted_label = label
-        else:
-            # Default
-            label_text = self.alias().replace("_", " ")
-            if len(str(label_text)) <= 4:
-                formatted_label = label_text.upper()
-            else:
-                formatted_label = label_text.title()
-
-        if self.label_prefix:
-            return f"{self.label_prefix} {formatted_label}"
-        return formatted_label
+        pass
 
     @property
     def field_type(self) -> str:
-        return str(self._definition.get("field_type"))
+        pass
 
     @property
     def measure(self):
-        measure = self._definition.get(ZenlyticFieldType.measure)
-        if measure:
-            return self.get_field_with_view_info(measure)
-        return
+        pass
 
     @property
     def timeframes(self):
-        timeframes = self._definition.get("timeframes", [])
-        if timeframes and isinstance(timeframes, list) and "raw" not in timeframes:
-            return ["raw"] + timeframes
-        return timeframes
+        pass
 
     @property
     def filters(self):
-        filters = self._definition.get("filters")
-        if filters:
-            return filters
-        return []
+        pass
 
     @property
     def convert_timezone(self):
-        default_value = True
-        if self.view.model.default_convert_tz is False or self.view.model.default_convert_timezone is False:
-            default_value = False
-
-        if "convert_timezone" in self._definition:
-            convert = self._definition.get("convert_timezone", default_value)
-        else:
-            convert = self._definition.get("convert_tz", default_value)
-        return convert
+        pass
 
     @property
     def datatype(self):
-        if "datatype" in self._definition:
-            return self._definition["datatype"]
-        elif self._definition["field_type"] == ZenlyticFieldType.dimension_group:
-            return self.defaults["datatype"]
-        return
+        pass
 
     @property
     def is_merged_result(self):
-        if "is_merged_result" in self._definition:
-            return self._definition["is_merged_result"]
-        elif self.type == "number" and self.field_type == ZenlyticFieldType.measure:
-            # For number types, if the references have different canon_date values
-            # then we need to make it a merged result.
-            referenced_canon_dates = set()
-            for reference in self.referenced_fields(self.sql):
-                if (
-                    not isinstance(reference, str)
-                    and reference.field_type == ZenlyticFieldType.measure
-                    and reference.type != "cumulative"
-                ):
-                    referenced_canon_dates.add(reference.canon_date)
-
-            return len(referenced_canon_dates) > 1
-        return False
+        pass
 
     def combined_sql_md5(self) -> str:
-        return compute_combined_sql_md5(
-            sql=self.sql,
-            type=self.type,
-            filters=self.filters,
-            non_additive_dimension=self.non_additive_dimension,
-        )
+        pass
 
     def sql_hash(self):
         # The query type doesn't matter for generating the hash
-        result = hashlib.md5(self.sql_query(query_type=Definitions.snowflake).encode("utf-8"))  # nosec
-        return result.hexdigest()
+        pass
 
     def sql_replacement_func(self, sql: str):
-        query_attributes = {"dimension_group": self.dimension_group}
-        return self.view.jinja_replacements(
-            sql, {"user_attributes": self.view.project._user, "query_attributes": query_attributes}
-        )
+        pass
 
     def loses_join_ability_with_other_views(self):
         if "is_merged_result" in self._definition:
@@ -533,45 +322,20 @@ class Field(MetricsLayerBase, SQLReplacement):
 
     @property
     def canon_date(self):
-        if self._definition.get("canon_date"):
-            canon_date = self._definition["canon_date"].replace("${", "").replace("}", "")
-            return self._add_view_name_if_needed(canon_date)
-        if self.view.default_date:
-            return self._add_view_name_if_needed(self.view.default_date)
-        return None
+        pass
 
     @property
     def drill_fields(self):
-        drill_fields = self._definition.get("drill_fields")
-        if drill_fields:
-            set_definition = {"name": "drill_fields", "fields": drill_fields, "view_name": self.view.name}
-            return Set(set_definition, project=self.view.project).field_names()
-        return drill_fields
+        pass
 
     @property
     def non_additive_dimension(self):
-        non_additive_dimension = self._definition.get("non_additive_dimension")
-        if non_additive_dimension and isinstance(non_additive_dimension, dict):
-            if "." not in non_additive_dimension["name"]:
-                qualified_name = f"{self.view.name}.{non_additive_dimension['name']}"
-                non_additive_dimension["name"] = qualified_name
-            if window_groupings := non_additive_dimension.get("window_groupings", []):
-                if isinstance(window_groupings, list):
-                    qualified_groupings = []
-                    for grouping in window_groupings:
-                        if "." not in grouping:
-                            qualified_name = f"{self.view.name}.{grouping}"
-                        else:
-                            qualified_name = grouping
-                        qualified_groupings.append(qualified_name)
-                    non_additive_dimension["window_groupings"] = qualified_groupings
-
-        return non_additive_dimension
+        pass
 
     @property
     def update_where_timeframe(self):
         # if this value is present we use it, otherwise we default to True
-        return self._definition.get("update_where_timeframe", True)
+        pass
 
     def cte_prefix(self, aggregated: bool = True):
         if self.type == "cumulative":
@@ -633,26 +397,7 @@ class Field(MetricsLayerBase, SQLReplacement):
         )
 
     def default_wrapping_func(self, sql, query_type: str):
-        if not isinstance(sql, str):
-            return sql
-
-        if self.field_type == ZenlyticFieldType.measure and self.window:
-            try:
-                sqlglot_sql_flavor = sql_flavor_to_sqlglot_format(query_type)
-                parsed_sql = sqlglot.parse_one(sql, read=sqlglot_sql_flavor)
-            except Exception:
-                # If we can't parse the SQL, return it as-is
-                return sql
-
-            # Check if any aggregation contains a window function
-            for agg in list(parsed_sql.find_all(exp.AggFunc)):
-                window_functions = list(agg.find_all(exp.Window))
-                if len(window_functions) > 0:
-                    raise QueryError(
-                        f"Window function SQL is invalid for field {self.name}. Please remove "
-                        "the aggregation from the outside of the window function."
-                    )
-        return sql
+        pass
 
     def _field_uses_non_standard_model_format_sql(self):
         if self.field_type == ZenlyticFieldType.measure and self.non_additive_dimension:
@@ -660,22 +405,7 @@ class Field(MetricsLayerBase, SQLReplacement):
         return False
 
     def ensure_column_reference_exists(self, sql, query_type: str) -> str:
-        if not isinstance(sql, str):
-            return sql
-
-        sqlglot_sql_flavor = sql_flavor_to_sqlglot_format(query_type)
-        parsed_sql = sqlglot.parse_one(sql, read=sqlglot_sql_flavor)
-
-        def add_table_if_not_present_in_column_reference(node: exp.Expression):
-            if isinstance(node, exp.Column):
-                if not node.table:
-                    return exp.Column(this=f"{self.view.name}.{node.this}", quoted=False)
-                else:
-                    return node
-            return node
-
-        transformed = parsed_sql.transform(add_table_if_not_present_in_column_reference)
-        return transformed.sql(dialect=sqlglot_sql_flavor)
+        pass
 
     def raw_sql_query(
         self,
@@ -723,75 +453,28 @@ class Field(MetricsLayerBase, SQLReplacement):
         return type_lookup[self.type](sql, query_type, functional_pk, alias_only, model_format)
 
     def strict_replaced_query(self):
-        clean_sql = copy(self.sql)
-        fields_to_replace = self.fields_to_replace(clean_sql)
-        for to_replace in fields_to_replace:
-            if to_replace == "TABLE":
-                clean_sql = clean_sql.replace("${TABLE}.", "")
-            else:
-                field = self.get_field_with_view_info(to_replace)
-                if field:
-                    if field.is_merged_result or field.type in ZenlyticType.non_aggregating_measure_options:
-                        sql_replace = "(" + field.strict_replaced_query() + ")"
-                    else:
-                        sql_replace = field.alias(with_view=True)
-                else:
-                    sql_replace = to_replace
-
-                clean_sql = clean_sql.replace("${" + to_replace + "}", sql_replace)
-        return clean_sql.strip()
+        pass
 
     def _needs_symmetric_aggregate(self, functional_pk: MetricsLayerBase):
-        if functional_pk:
-            try:
-                field_pk_id = self.view.primary_key.id()
-            except AttributeError:
-                raise QueryError(
-                    f"The primary key for the view {self.view.name} is not defined. "
-                    "To use symmetric aggregates, you need to define the primary key. "
-                    "Define the primary key by adding primary_key: yes to the field "
-                    "that is the primary key of the table."
-                )
-            different_functional_pk = (
-                functional_pk == Definitions.does_not_exist or field_pk_id != functional_pk.id()
-            )
-        else:
-            different_functional_pk = False
-        return different_functional_pk
+        pass
 
     def _get_sql_distinct_key(self, sql_distinct_key: str, query_type: str, alias_only: bool):
-        if self.filters:
-            clean_sql_distinct_key = Filter.translate_looker_filters_to_sql(
-                sql_distinct_key, self.filters, self.view, sql_replacement_func=self.sql_replacement_func
-            )
-        else:
-            clean_sql_distinct_key = sql_distinct_key
-        return self._replace_sql_query(clean_sql_distinct_key, query_type, alias_only=alias_only)
+        pass
 
     def _count_distinct_aggregate_sql(
         self, sql: str, query_type: str, functional_pk: str, alias_only: bool, model_format: bool = False
     ):
-        return f"COUNT(DISTINCT({sql}))"
+        pass
 
     def _sum_aggregate_sql(
         self, sql: str, query_type: str, functional_pk: str, alias_only: bool, model_format: bool = False
     ):
-        if (
-            query_type in Definitions.symmetric_aggregates_supported_warehouses
-            and self._needs_symmetric_aggregate(functional_pk)
-        ):
-            return self._sum_symmetric_aggregate(sql, query_type, alias_only=alias_only)
-        return f"SUM({sql})"
+        pass
 
     def _sum_distinct_aggregate_sql(
         self, sql: str, query_type: str, functional_pk: str, alias_only: bool, model_format: bool = False
     ):
-        sql_distinct_key = self._get_sql_distinct_key(
-            self.sql_distinct_key, query_type, alias_only=alias_only
-        )
-        return self._sum_symmetric_aggregate(
-            sql, query_type, primary_key_sql=sql_distinct_key, alias_only=alias_only
-        )
+        pass
 
     def _sum_symmetric_aggregate(
         self,
@@ -801,144 +484,37 @@ class Field(MetricsLayerBase, SQLReplacement):
         alias_only: bool = False,
         factor: int = 1_000_000,
     ):
-        if query_type not in Definitions.symmetric_aggregates_supported_warehouses:
-            raise QueryError(
-                f"Symmetric aggregates are not supported in {query_type}. "
-                "Use the 'sum' type instead of 'sum_distinct'."
-            )
-        elif query_type == Definitions.snowflake:
-            return self._sum_symmetric_aggregate_snowflake(sql, primary_key_sql, alias_only, factor)
-        elif query_type == Definitions.redshift:
-            return self._sum_symmetric_aggregate_redshift(sql, primary_key_sql, alias_only, factor)
-        elif query_type in {Definitions.postgres, Definitions.duck_db}:
-            return self._sum_symmetric_aggregate_postgres(sql, primary_key_sql, alias_only, factor)
-        elif query_type == Definitions.bigquery:
-            return self._sum_symmetric_aggregate_bigquery(sql, primary_key_sql, alias_only, factor)
-        elif query_type in {Definitions.azure_synapse, Definitions.sql_server}:
-            return self._sum_symmetric_aggregate_azure_synapse(sql, primary_key_sql, alias_only, factor)
-        else:
-            raise QueryError(f"Symmetric aggregate not supported in {query_type}")
+        pass
 
     def _sum_symmetric_aggregate_bigquery(
         self, sql: str, primary_key_sql: str, alias_only: bool, factor: int = 1_000_000
     ):
-        if not primary_key_sql:
-            raw_primary_key_sql = self.view.primary_key.sql_query(Definitions.bigquery, alias_only=alias_only)
-            primary_key_sql = self._get_sql_distinct_key(
-                raw_primary_key_sql, Definitions.bigquery, alias_only
-            )
-
-        adjusted_sum = f"(CAST(FLOOR(COALESCE({sql}, 0) * ({factor} * 1.0)) AS FLOAT64))"
-
-        pk_sum = f"CAST(FARM_FINGERPRINT(CAST({primary_key_sql} AS STRING)) AS BIGNUMERIC)"
-
-        sum_with_pk_backout = f"SUM(DISTINCT {adjusted_sum} + {pk_sum}) - SUM(DISTINCT {pk_sum})"
-
-        backed_out_cast = f"COALESCE(CAST(({sum_with_pk_backout}) AS FLOAT64)"
-
-        result = f"{backed_out_cast} / CAST(({factor}*1.0) AS FLOAT64), 0)"
-        return result
+        pass
 
     def _sum_symmetric_aggregate_postgres(
         self, sql: str, primary_key_sql: str, alias_only: bool, factor: int = 1_000_000
     ):
-        if not primary_key_sql:
-            raw_primary_key_sql = self.view.primary_key.sql_query(Definitions.postgres, alias_only=alias_only)
-            primary_key_sql = self._get_sql_distinct_key(
-                raw_primary_key_sql, Definitions.postgres, alias_only
-            )
-
-        adjusted_sum = f"(CAST(FLOOR(COALESCE({sql}, 0) * ({factor} * 1.0)) AS DECIMAL(38,0)))"
-
-        pk_sum = f"(HASHTEXTEXTENDED(CAST({primary_key_sql} AS TEXT), 0))::NUMERIC(38, 0)"
-
-        sum_with_pk_backout = f"SUM(DISTINCT {adjusted_sum} + {pk_sum}) - SUM(DISTINCT {pk_sum})"
-
-        backed_out_cast = f"COALESCE(CAST(({sum_with_pk_backout}) AS DOUBLE PRECISION)"
-
-        result = f"{backed_out_cast} / CAST(({factor}*1.0) AS DOUBLE PRECISION), 0)"
-        return result
+        pass
 
     def _sum_symmetric_aggregate_redshift(
         self, sql: str, primary_key_sql: str, alias_only: bool, factor: int = 1_000_000
     ):
-        if not primary_key_sql:
-            raw_primary_key_sql = self.view.primary_key.sql_query(Definitions.redshift, alias_only=alias_only)
-            primary_key_sql = self._get_sql_distinct_key(
-                raw_primary_key_sql, Definitions.redshift, alias_only
-            )
-
-        adjusted_sum = f"(CAST(FLOOR(COALESCE({sql}, 0) * ({factor} * 1.0)) AS DECIMAL(38,0)))"
-
-        pk_sum = f"(FARMFINGERPRINT64({primary_key_sql}))::NUMERIC(38, 0)"
-
-        sum_with_pk_backout = f"SUM(DISTINCT {adjusted_sum} + {pk_sum}) - SUM(DISTINCT {pk_sum})"
-
-        backed_out_cast = f"COALESCE(CAST(({sum_with_pk_backout}) AS DOUBLE PRECISION)"
-
-        result = f"{backed_out_cast} / CAST(({factor}*1.0) AS DOUBLE PRECISION), 0)"
-        return result
+        pass
 
     def _sum_symmetric_aggregate_snowflake(
         self, sql: str, primary_key_sql: str, alias_only: bool, factor: int = 1_000_000
     ):
-        if not primary_key_sql:
-            raw_primary_key_sql = self.view.primary_key.sql_query(
-                Definitions.snowflake, alias_only=alias_only
-            )
-            primary_key_sql = self._get_sql_distinct_key(
-                raw_primary_key_sql, Definitions.snowflake, alias_only
-            )
-
-        adjusted_sum = f"(CAST(FLOOR(COALESCE({sql}, 0) * ({factor} * 1.0)) AS DECIMAL(38,0)))"
-
-        pk_sum = f"(TO_NUMBER(MD5({primary_key_sql}), 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX') % 1.0e27)::NUMERIC(38, 0)"  # noqa
-
-        sum_with_pk_backout = f"SUM(DISTINCT {adjusted_sum} + {pk_sum}) - SUM(DISTINCT {pk_sum})"
-
-        backed_out_cast = f"COALESCE(CAST(({sum_with_pk_backout}) AS DOUBLE PRECISION)"
-
-        result = f"{backed_out_cast} / CAST(({factor}*1.0) AS DOUBLE PRECISION), 0)"
-        return result
+        pass
 
     def _sum_symmetric_aggregate_azure_synapse(
         self, sql: str, primary_key_sql: str, alias_only: bool, factor: int = 1_000_000
     ):
-        if not primary_key_sql:
-            raw_primary_key_sql = self.view.primary_key.sql_query(
-                Definitions.azure_synapse, alias_only=alias_only
-            )
-            primary_key_sql = self._get_sql_distinct_key(
-                raw_primary_key_sql, Definitions.azure_synapse, alias_only
-            )
-
-        adjusted_sum = f"(CAST(FLOOR(COALESCE({sql}, 0) * ({factor} * 1.0)) AS DECIMAL(38,0)))"
-
-        pk_sum = (
-            f"ABS(CAST(HASHBYTES('MD5', CAST({primary_key_sql} AS NVARCHAR(MAX))) AS BIGINT)) %"
-            " 10000000000000000000000000"
-        )
-
-        sum_with_pk_backout = f"SUM(DISTINCT {adjusted_sum} + {pk_sum}) - SUM(DISTINCT {pk_sum})"
-
-        backed_out_cast = f"COALESCE(CAST(({sum_with_pk_backout}) AS FLOAT)"
-
-        result = f"{backed_out_cast} / CAST(({factor}*1.0) AS FLOAT), 0)"
-        return result
+        pass
 
     def _count_aggregate_sql(
         self, sql: str, query_type: str, functional_pk: str, alias_only: bool, model_format: bool = False
     ):
-        if (
-            query_type in Definitions.symmetric_aggregates_supported_warehouses
-            and self._needs_symmetric_aggregate(functional_pk)
-        ):
-            if self.primary_key_count:
-                return self._count_distinct_aggregate_sql(
-                    sql, query_type, functional_pk, alias_only=alias_only
-                )
-            return self._count_symmetric_aggregate(sql, query_type, alias_only=alias_only)
-        return f"COUNT({sql})"
+        pass
 
     def _count_symmetric_aggregate(
         self,
@@ -949,130 +525,54 @@ class Field(MetricsLayerBase, SQLReplacement):
         factor: int = 1_000_000,
     ):
         # This works for both all types
-        return self._count_symmetric_aggregate_snowflake(
-            sql, query_type, primary_key_sql=primary_key_sql, alias_only=alias_only
-        )
+        pass
 
     def _count_symmetric_aggregate_snowflake(
         self, sql: str, query_type: str, primary_key_sql: str, alias_only: bool
     ):
-        if not primary_key_sql:
-            raw_primary_key_sql = self.view.primary_key.sql_query(query_type, alias_only=alias_only)
-            primary_key_sql = self._get_sql_distinct_key(raw_primary_key_sql, query_type, alias_only)
-        pk_if_not_null = f"CASE WHEN  ({sql})  IS NOT NULL THEN  {primary_key_sql}  ELSE NULL END"
-        result = f"NULLIF(COUNT(DISTINCT {pk_if_not_null}), 0)"
-        return result
+        pass
 
     def _average_aggregate_sql(
         self, sql: str, query_type: str, functional_pk: str, alias_only: bool, model_format: bool = False
     ):
-        if (
-            query_type in Definitions.symmetric_aggregates_supported_warehouses
-            and self._needs_symmetric_aggregate(functional_pk)
-        ):
-            return self._average_symmetric_aggregate(sql, query_type, alias_only=alias_only)
-        return f"AVG({sql})"
+        pass
 
     def _average_distinct_aggregate_sql(
         self, sql: str, query_type: str, functional_pk: str, alias_only: bool, model_format: bool = False
     ):
-        if query_type not in Definitions.symmetric_aggregates_supported_warehouses:
-            raise QueryError(
-                f"Symmetric aggregates are not supported in {query_type}. "
-                "Use the 'average' type instead of 'average_distinct'."
-            )
-        sql_distinct_key = self._get_sql_distinct_key(self.sql_distinct_key, query_type, alias_only)
-        return self._average_symmetric_aggregate(
-            sql, query_type, primary_key_sql=sql_distinct_key, alias_only=alias_only
-        )
+        pass
 
     def _average_symmetric_aggregate(
         self, sql: str, query_type, primary_key_sql: str = None, alias_only: bool = False
     ):
-        sum_symmetric = self._sum_symmetric_aggregate(
-            sql, query_type, primary_key_sql=primary_key_sql, alias_only=alias_only
-        )
-        count_symmetric = self._count_symmetric_aggregate(
-            sql, query_type, primary_key_sql=primary_key_sql, alias_only=alias_only
-        )
-        result = f"({sum_symmetric} / {count_symmetric})"
-        return result
+        pass
 
     def _median_aggregate_sql(
         self, sql: str, query_type: str, functional_pk: str, alias_only: bool, model_format: bool = False
     ):
-        if query_type in {
-            Definitions.druid,
-            Definitions.postgres,
-            Definitions.sql_server,
-            Definitions.azure_synapse,
-            Definitions.trino,
-            Definitions.athena,
-            Definitions.mysql,
-        }:
-            raise QueryError(
-                f"Median is not supported in {query_type}. Please choose another "
-                f"aggregate function for the {self.id()} measure."
-            )
-        # Medians do not work with symmetric aggregates, so there's just the one return
-        if query_type == Definitions.bigquery:
-            return f"APPROX_QUANTILES({sql}, 100)[OFFSET(50)]"
-        return f"MEDIAN({sql})"
+        pass
 
     def _percentile_aggregate_sql(
         self, sql: str, query_type: str, functional_pk: str, alias_only: bool, model_format: bool = False
     ):
-        if query_type not in {
-            Definitions.snowflake,
-            Definitions.redshift,
-            Definitions.postgres,
-            Definitions.sql_server,
-            Definitions.duck_db,
-            Definitions.databricks,
-            Definitions.azure_synapse,
-        }:
-            raise QueryError(
-                f"Percentile is not supported in {query_type}. Please choose another "
-                f"aggregate function for the {self.id()} measure."
-            )
-        # Percentiles do not work with symmetric aggregates, so there's just the one return
-        return f"PERCENTILE_CONT({self.percentile / 100.0}) WITHIN GROUP (ORDER BY {sql})"
+        pass
 
     def _max_aggregate_sql(
         self, sql: str, query_type: str, functional_pk: str, alias_only: bool, model_format: bool = False
     ):
         # Max works natively with symmetric aggregates, so there's just the one return
-        return f"MAX({sql})"
+        pass
 
     def _min_aggregate_sql(
         self, sql: str, query_type: str, functional_pk: str, alias_only: bool, model_format: bool = False
     ):
         # Min works natively with symmetric aggregates, so there's just the one return
-        return f"MIN({sql})"
+        pass
 
     def _non_aggregating_measure_sql(
         self, sql: str, query_type: str, functional_pk: str, alias_only: bool, model_format: bool = False
     ):
-        if isinstance(sql, list):
-            replaced = copy(self.sql)
-            for field_name in self.fields_to_replace(self.sql):
-                proper_to_replace = "${" + field_name + "}"
-                if field_name == "TABLE":
-                    if alias_only:
-                        proper_to_replace += "."
-                        to_replace = ""
-                    else:
-                        to_replace = self.view.name
-                else:
-                    field = self.get_field_with_view_info(field_name)
-                    to_replace = field.sql_query(
-                        query_type, functional_pk, alias_only=alias_only, model_format=model_format
-                    )
-                    to_replace = f"({to_replace})"
-                replaced = replaced.replace(proper_to_replace, to_replace)
-        else:
-            raise MetricsLayerException(f"Invalid case for non-aggregating measure sql: {sql}")
-        return replaced
+        pass
 
     def required_views(self):
         views = []
@@ -1123,13 +623,7 @@ class Field(MetricsLayerBase, SQLReplacement):
         return output
 
     def to_yaml_properties_format(self):
-        properties = {}
-        for attr in self.valid_properties:
-            if hasattr(self.__class__, attr) and isinstance(getattr(self.__class__, attr), property):
-                properties[attr] = getattr(self, attr)
-            elif attr in self._definition:
-                properties[attr] = self._definition[attr]
-        return properties
+        pass
 
     def printable_attributes(self):
         to_print = [
@@ -3046,17 +2540,7 @@ class Field(MetricsLayerBase, SQLReplacement):
 
     @staticmethod
     def static_sql_validation(sql: str, query_type: str):
-        sqlglot_sql_flavor = sql_flavor_to_sqlglot_format(query_type)
-        try:
-            # The assumption here is that the passed sql may or may not contain references
-            # if it does contain references, they are valid, so this function checks only
-            # for SQL parse-ability, not reference logic (which is checked by collect_sql_errors)
-            replaced_sql = sql.replace("${", "").replace("}", "")
-            sqlglot.parse_one(replaced_sql, read=sqlglot_sql_flavor)
-        except Exception as e:
-            return [str(e)]
-
-        return []
+        pass
 
     def get_referenced_sql_query(self, strings_only=True):
         if self.sql and ("{%" in self.sql or self.sql == ""):
@@ -3103,29 +2587,7 @@ class Field(MetricsLayerBase, SQLReplacement):
         return reference_fields
 
     def referenced_window_functions(self, sql) -> List[Any]:
-        reference_window_functions = []
-        if sql is None:
-            return []
-
-        for to_replace in self.fields_to_replace(sql):
-            if to_replace != "TABLE":
-                try:
-                    field = self.get_field_with_view_info(to_replace)
-                except AccessDeniedOrDoesNotExistException:
-                    continue
-
-                contains_non_table_references = field.sql and any(
-                    r != "TABLE" for r in self.fields_to_replace(field.sql)
-                )
-                if contains_non_table_references:
-                    reference_fields_raw = field.referenced_window_functions(field.sql)
-                    for f in reference_fields_raw:
-                        if f.window:
-                            reference_window_functions.append(f)
-                if field is not None and field.window:
-                    reference_window_functions.append(field)
-
-        return reference_window_functions
+        pass
 
     def get_replaced_sql_query(
         self, query_type: str, alias_only: bool = False, render_window_functions: bool = False
@@ -3218,41 +2680,14 @@ class Field(MetricsLayerBase, SQLReplacement):
         return self.view.project.get_field(field_name, view_name=view_name)
 
     def _translate_looker_tier_to_sql(self, sql: str, tiers: list):
-        case_sql = "case "
-        when_sql = f"when {sql} < {tiers[0]} then 'Below {tiers[0]}' "
-        case_sql += when_sql
-
-        # Handle all bucketed conditions
-        for i, tier in enumerate(tiers[:-1]):
-            start, end = tier, tiers[i + 1]
-            when_sql = f"when {sql} >= {start} and {sql} < {end} then '[{start},{end})' "
-            case_sql += when_sql
-
-        # Handle last condition greater than of equal to the last bucket cutoff
-        when_sql = f"when {sql} >= {tiers[-1]} then '[{tiers[-1]},inf)' "
-        case_sql += when_sql
-        return case_sql + "else 'Unknown' end"
+        pass
 
     @staticmethod
     def _translate_looker_case_to_sql(case: dict):
-        case_sql = "case "
-        for when in case["whens"]:
-            # Do this so the warehouse doesn't think it's an identifier
-            when_condition_sql = when["sql"].replace('"', "'")
-            when_sql = f"when {when_condition_sql} then '{when['label']}' "
-            case_sql += when_sql
-
-        if case.get("else"):
-            case_sql += f"else '{case['else']}' "
-
-        return case_sql + "end"
+        pass
 
     def _clean_sql_for_case(self, sql: str):
-        clean_sql = copy(sql)
-        for to_replace in self.fields_to_replace(sql):
-            if to_replace != "TABLE":
-                clean_sql = clean_sql.replace("${" + to_replace + "}", "${" + to_replace.lower() + "}")
-        return clean_sql
+        pass
 
     def _derive_query_type(self) -> str:
         model = self.view.model
@@ -3272,22 +2707,13 @@ class Field(MetricsLayerBase, SQLReplacement):
         return connection_type
 
     def _add_view_name_if_needed(self, field_name: str):
-        if "." in field_name:
-            return field_name
-        return f"{self.view.name}.{field_name}"
+        pass
 
     def non_additive_alias(self):
-        if self.non_additive_dimension:
-            window_choice = self.non_additive_dimension["window_choice"]
-            window_name = self.non_additive_dimension["name"].split(".")[-1].lower()
-            return f"{self.view.name}_{window_choice}_{window_name}"
-        return None
+        pass
 
     def non_additive_cte_alias(self):
-        if self.non_additive_dimension:
-            window_name = self.non_additive_dimension["name"].split(".")[-1].lower()
-            return f"cte_{self.name}_{window_name}"
-        return None
+        pass
 
     def is_cumulative(self):
         explicitly_cumulative = self.type == "cumulative"
@@ -3346,9 +2772,7 @@ class Field(MetricsLayerBase, SQLReplacement):
 
     @staticmethod
     def _name_is_not_valid_sql(name: str):
-        name_is_keyword = name is not None and name.lower() in SQL_KEYWORDS
-        digit_first_char = name[0] in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
-        return name_is_keyword or digit_first_char
+        pass
 
     @functools.lru_cache(maxsize=None)
     def join_graphs(self):

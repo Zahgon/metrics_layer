@@ -523,10 +523,7 @@ def append_table_reference(sql: str):
 
         # Transform column references to include ${TABLE}. prefix
         def transform_columns(node):
-            if isinstance(node, sqlglot.expressions.Column) and not node.table:
-                # Only add ${TABLE}. if the column doesn't already have a table reference
-                node.set("table", sqlglot.expressions.Identifier(this="${TABLE}"))
-            return node
+            pass
 
         # Apply the transformation
         transformed = parsed.transform(transform_columns)
@@ -546,7 +543,7 @@ def get_name_or_string_literal(s):
 
 
 def sql_has_operations(sql: str) -> bool:
-    return any(op in sql for op in ["+", "-", "*", "/", "(", ")", " ", ","])
+    pass
 
 
 def convert_yml_to_dict(path):
@@ -565,44 +562,11 @@ def extract_inner_text(s):
 
 
 def zenlytic_views_to_yaml(zenlytic_models, zenlytic_views, directory: str = None, write_to_file=True):
-    view_directory = os.path.join(directory, "views") if directory else "./views"
-    model_directory = os.path.join(directory, "models") if directory else "./models"
-
-    if not os.path.exists(view_directory) and write_to_file:
-        os.makedirs(view_directory)
-
-    if not os.path.exists(model_directory) and write_to_file:
-        os.makedirs(model_directory)
-
-    zenlytic_yaml = []
-    for zenlytic_file in zenlytic_models + zenlytic_views:
-        # write the yaml to views/model_name.yml
-        if write_to_file:
-            if "original_file_path" in zenlytic_file:
-                file_path = zenlytic_file["original_file_path"]
-            else:
-                file_path = f"{zenlytic_file['name']}_{zenlytic_file['type']}.yml"
-
-            if zenlytic_file["type"] == "model":
-                write_to_path = os.path.join(model_directory, file_path)
-            else:
-                write_to_path = os.path.join(view_directory, file_path)
-            # write the yaml to views/model_name.yml
-            dump_yaml_to_file(zenlytic_file, write_to_path)
-
-        # add the yaml string to views_yaml
-        zenlytic_yaml.append(dump_yaml_to_file(zenlytic_file))
-
-    return zenlytic_yaml
+    pass
 
 
 def dump_yaml_to_file(data, path: str = None):
-    filtered_data = {k: v for k, v in data.items() if not k.startswith("_")}
-    if path is None:
-        return ruamel.yaml.dump(filtered_data, Dumper=ruamel.yaml.RoundTripDumper)
-    else:
-        with open(path, "w") as f:
-            ruamel.yaml.dump(filtered_data, f, Dumper=ruamel.yaml.RoundTripDumper)
+    pass
 
 
 def read_mf_project_files(models_folder: str):

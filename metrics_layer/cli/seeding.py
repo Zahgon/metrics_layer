@@ -290,7 +290,7 @@ class SeedMetricsLayer:
         try:
             project = loader.load()
         except ConfigError:
-            # No zenlytic_project.yml yet — seeding will create it
+            # No zenlytic_project.yml yet â€” seeding will create it
             project = Project(models=[], views=[])
 
         current_models = project.models()
@@ -381,88 +381,7 @@ class SeedMetricsLayer:
         ValueError
             If the instance was created without a specific ``table`` name.
         """
-        if not self.table:
-            raise ValueError(
-                "seed_single_view() requires a specific table name. "
-                "Set the 'table' parameter when constructing SeedMetricsLayer."
-            )
-
-        if self.connection.type not in Definitions.supported_warehouses:
-            raise NotImplementedError(
-                f"The only data warehouses supported for seeding are "
-                f"{Definitions.supported_warehouses_text}"
-            )
-
-        columns_query = self.columns_query()
-        data = self.run_query(columns_query)
-
-        # HELP COLUMN (used for Teradata) returns different column names;
-        # normalise before the standard checks.
-        if self.connection.type == Definitions.teradata and self.table:
-            data = self._normalize_teradata_help_column(data)
-
-        if data.empty or "TABLE_NAME" not in [c.upper() for c in data.columns]:
-            return None
-
-        data.columns = [c.upper() for c in data.columns]
-
-        if self.connection.type in {Definitions.snowflake, Definitions.databricks, Definitions.redshift}:
-            table_query = self.table_query()
-            table_data = self.run_query(table_query)
-            table_data.columns = [c.upper() for c in table_data.columns]
-        else:
-            table_data = pd.DataFrame()
-
-        # Filter to the chosen schema and table
-        if self.schema:
-            data = data[data["TABLE_SCHEMA"].str.lower() == self.schema.lower()].copy()
-            if not table_data.empty:
-                table_data = table_data[
-                    table_data["TABLE_SCHEMA"].str.lower() == self.schema.lower()
-                ].copy()
-
-        if self.table:
-            data = data[data["TABLE_NAME"].str.lower() == self.table.lower()].copy()
-            if not table_data.empty:
-                table_data = table_data[
-                    table_data["TABLE_NAME"].str.lower() == self.table.lower()
-                ].copy()
-
-        if data.empty:
-            return None
-
-        tables = data["TABLE_NAME"].unique()
-        if len(tables) == 0:
-            return None
-
-        table_name = tables[0]
-        column_df = data[data["TABLE_NAME"].str.lower() == table_name.lower()].copy()
-
-        if column_df.empty:
-            return None
-
-        if not table_data.empty:
-            matching_rows = table_data[table_data["TABLE_NAME"].str.lower() == table_name.lower()]
-            table_comment = (
-                matching_rows["COMMENT"].values[0]
-                if not matching_rows.empty and "COMMENT" in matching_rows.columns
-                else None
-            )
-        else:
-            table_comment = None
-
-        schema_name = column_df["TABLE_SCHEMA"].values[0]
-
-        view = self.make_view(
-            column_df,
-            model_name,
-            table_name,
-            schema_name,
-            table_comment,
-            auto_tag_searchable_fields=auto_tag_searchable_fields,
-            tag_default_date=tag_default_date,
-        )
-        return view
+        pass
 
     def get_model_name(self, current_models: list):
         if len(current_models) == 1:
@@ -907,18 +826,7 @@ class SeedMetricsLayer:
 
     @staticmethod
     def _init_connection(metrics_layer, connection_name: str = None):
-        if connection_name:
-            connection = metrics_layer.get_connection(connection_name)
-        else:
-            connections = metrics_layer.list_connections()
-            if len(connections) == 1:
-                connection = connections[0]
-            else:
-                raise ValueError(
-                    f"Could not determine the connection to use, "
-                    f"please pass the connection name with the --connection arg"
-                )
-        return connection
+        pass
 
     @staticmethod
     def _init_profile(profile_name: str, target: str = None):

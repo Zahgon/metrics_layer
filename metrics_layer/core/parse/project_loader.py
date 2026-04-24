@@ -26,8 +26,7 @@ class ProjectLoader:
 
     @property
     def zenlytic_project(self):
-        reader = ProjectReaderBase(repo=self.repo)
-        return reader.zenlytic_project if reader.zenlytic_project else {}
+        pass
 
     @staticmethod
     def profiles_path():
@@ -72,45 +71,19 @@ class ProjectLoader:
 
     def _get_repo(self, location: str, branch: str, kwargs: dict):
         # Config is passed explicitly: this gets first priority
-        if location is not None:
-            return self._get_repo_from_location(location, branch, kwargs)
-
-        # Next look for environment variables
-        repo = self._get_repo_from_environment(kwargs)
-        if repo:
-            return repo
-
-        raise ConfigError(
-            """ We could not find a valid configuration in the environment. Try following the
-            documentation (https://docs.zenlytic.com/docs/development_environment/development_environment)
-            to properly set your environment variables, or pass the configuration explicitly
-        """
-        )
+        pass
 
     @staticmethod
     def _get_repo_from_location(location: str, branch: str, kwargs: dict):
-        if ProjectLoader._is_local(location):
-            return LocalRepo(repo_path=location, **kwargs)
-        return GithubRepo(repo_url=location, branch=branch, **kwargs)
+        pass
 
     @staticmethod
     def _get_repo_from_environment(kwargs: dict):
-        prefix = "METRICS_LAYER"
-        location = os.getenv(f"{prefix}_LOCATION")
-        branch = os.getenv(f"{prefix}_BRANCH", "master")
-        repo_type = os.getenv(f"{prefix}_REPO_TYPE")
-        if location is None:
-            return None
-
-        if ProjectLoader._is_local(location):
-            return LocalRepo(repo_path=location, repo_type=repo_type, **kwargs)
-        return GithubRepo(repo_url=location, branch=branch, repo_type=repo_type, **kwargs)
+        pass
 
     @staticmethod
     def _is_local(location: str):
-        is_http = "http://" in location.lower() or "https://" in location.lower()
-        is_ssh = location.lower().startswith("git@")
-        return not (is_http or is_ssh)
+        pass
 
     @staticmethod
     def load_connections(connections: list):

@@ -75,18 +75,15 @@ class MetricsLayerFilter(MetricsLayerBase):
 
     @property
     def conditions(self):
-        return self._definition.get("conditions", [])
+        pass
 
     @property
     def is_group_by(self):
-        return self.group_by is not None or self.expression in {
-            MetricsLayerFilterExpressionType.IsInQuery.value,
-            MetricsLayerFilterExpressionType.IsNotInQuery.value,
-        }
+        pass
 
     @property
     def is_funnel(self):
-        return self.expression in {FunnelFilterTypes.converted, FunnelFilterTypes.dropped_off}
+        pass
 
     def validate(self, definition: Dict) -> None:
         """
@@ -347,84 +344,17 @@ class MetricsLayerFilter(MetricsLayerBase):
         return Filter.sql_query(field_sql, self.expression_type, self.value, field_datatype)
 
     def cte(self, query_class, design_class):
-        if not self.is_group_by:
-            raise QueryError(
-                "A CTE is invalid for a filter with no group_by property or is_in_query/is_not_in_query"
-                " expression"
-            )
-        if self.group_by:
-            return self._create_subquery_from_group_by_property(query_class, design_class)
-        elif self.expression in {
-            MetricsLayerFilterExpressionType.IsInQuery.value,
-            MetricsLayerFilterExpressionType.IsNotInQuery.value,
-        }:
-            return self._create_subquery_from_query_property()
-        else:
-            raise QueryError(
-                "A CTE is invalid for a filter with no group_by property or is_in_query/is_not_in_query"
-                " expression"
-            )
+        pass
 
     def _create_subquery_from_query_property(self):
         # This is a subquery that's compiled in the `resolve.py` file in the initial parsing step.
-        return self.value["sql_query"]
+        pass
 
     def _create_subquery_from_group_by_property(self, query_class, design_class):
-        group_by_filters = [{k: v for k, v in self._definition.items() if k != "group_by"}]
-
-        field_lookup = {}
-        group_by_field = self.design.get_field(self.group_by)
-        field_lookup[group_by_field.id()] = group_by_field
-
-        filter_dict_args = {"where": [], "having": []}
-        for group_by_filter in group_by_filters:
-            filter_field = self.design.get_field(group_by_filter["field"])
-            field_lookup[filter_field.id()] = filter_field
-
-            if filter_field.field_type == "measure":
-                filter_dict_args["having"].append(group_by_filter)
-            else:
-                filter_dict_args["where"].append(group_by_filter)
-
-        design = design_class(
-            no_group_by=False,
-            query_type=self.design.query_type,
-            field_lookup=field_lookup,
-            model=self.design.model,
-            project=self.design.project,
-        )
-
-        config = {
-            "metrics": [],
-            "dimensions": [self.group_by],
-            **filter_dict_args,
-            "return_pypika_query": True,
-        }
-        generator = query_class(config, design=design)
-        return generator.get_query()
+        pass
 
     def funnel_cte(self):
-        if not self.is_funnel:
-            raise QueryError("A funnel CTE is invalid for a filter with no funnel property")
-
-        _from, _to = self._definition["from"], self._definition["to"]
-        from_cte, to_cte = self.query_class._cte(_from), self.query_class._cte(_to)
-
-        base_query = self.query_class._base_query()
-        base_table = Table(self.query_class.base_cte_name)
-        base_query = base_query.from_(base_table).select(self.query_class.link_alias)
-
-        from_cond = self.__funnel_in_step(from_cte, isin=True)
-        converted = self.expression == FunnelFilterTypes.converted
-        to_cond = self.__funnel_in_step(to_cte, isin=converted)
-
-        base_query = base_query.where(Criterion.all([from_cond, to_cond])).distinct()
-        return base_query
+        pass
 
     def __funnel_in_step(self, step_cte: str, isin: bool):
-        base_query = self.query_class._base_query()
-        field = Field(self.query_class.link_alias)
-        subquery = base_query.from_(Table(step_cte)).select(self.query_class.link_alias).distinct()
-        if isin:
-            return field.isin(subquery)
-        return field.isin(subquery).negate()
+        pass

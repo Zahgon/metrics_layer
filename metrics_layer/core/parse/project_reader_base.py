@@ -39,22 +39,19 @@ class ProjectReaderBase:
 
     @property
     def zenlytic_project(self):
-        return self.read_yaml_if_exists(self.zenlytic_project_path)
+        pass
 
     @property
     def zenlytic_project_path(self):
-        zenlytic_project = self.read_yaml_if_exists(os.path.join(self.repo.folder, "zenlytic_project.yml"))
-        if zenlytic_project:
-            return os.path.join(self.repo.folder, "zenlytic_project.yml")
-        return os.path.join(self.dbt_folder, "zenlytic_project.yml")
+        pass
 
     @property
     def dbt_project(self):
-        return self.read_yaml_if_exists(os.path.join(self.dbt_folder, "dbt_project.yml"))
+        pass
 
     @property
     def dbt_folder(self):
-        return self.repo.dbt_path if self.repo.dbt_path else self.repo.folder
+        pass
 
     def get_folders(self, key: str, default: str = None, raise_errors: bool = True):
         if not self.zenlytic_project:
@@ -105,7 +102,7 @@ class ProjectReaderBase:
 
     @staticmethod
     def repr_str(representer, data):
-        return representer.represent_str(str(data))
+        pass
 
     @staticmethod
     def dump_yaml_file(data: dict, path: str):

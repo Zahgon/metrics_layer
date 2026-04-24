@@ -106,48 +106,30 @@ class GithubRepo(BaseRepo):
             shutil.rmtree(folder)
 
     def create_branch(self, branch_name: str, private_key: str = None):
-        self._ssh_wrapped(self.__create_branch, branch_name=branch_name, private_key=private_key)
+        pass
 
     def __create_branch(self, branch_name: str):
-        current = self.git_repo.create_head(branch_name)
-        current.checkout()
-        self.git_repo.git.push("--set-upstream", "origin", current)
+        pass
 
     def delete_branch(self, branch_name: str, private_key: str = None):
-        self._ssh_wrapped(self.__delete_branch, branch_name=branch_name, private_key=private_key)
+        pass
 
     def __delete_branch(self, branch_name: str):
-        self.git_repo.remote().push(refspec=f":{branch_name}")
+        pass
 
     def add_commit_and_push(
         self, message: str, branch_name: str, private_key: str = None, author: Union[str, None] = None
     ):
-        self._ssh_wrapped(
-            self.__add_commit_and_push,
-            message=message,
-            branch_name=branch_name,
-            private_key=private_key,
-            author=author,
-        )
+        pass
 
     def __add_commit_and_push(self, message: str, branch_name: str, author: Union[str, None] = None):
-        self.git_repo.git.checkout(branch_name)
-        self.git_repo.git.add(A=True)
-        if author:
-            self.git_repo.git.commit(m=message, author=author)
-        else:
-            self.git_repo.git.commit(m=message)
-        self.git_repo.git.push("origin", branch_name)
+        pass
 
     def pull(self, pulling_from: str, pulling_to: str, private_key: str = None):
-        self._ssh_wrapped(
-            self.__pull, pulling_from=pulling_from, pulling_to=pulling_to, private_key=private_key
-        )
+        pass
 
     def __pull(self, pulling_from: str, pulling_to: str):
-        self.git_repo.git.checkout(pulling_to)
-        self.git_repo.git.pull("--rebase=false", "origin", pulling_from)
-        self.git_repo.git.push("origin", pulling_to)
+        pass
 
     def squash_and_merge(
         self,
@@ -157,39 +139,15 @@ class GithubRepo(BaseRepo):
         private_key: str = None,
         author: Union[str, None] = None,
     ):
-        self._ssh_wrapped(
-            self.__squash_and_merge,
-            merging_from=merging_from,
-            merging_to=merging_to,
-            message=message,
-            private_key=private_key,
-            author=author,
-        )
+        pass
 
     def __squash_and_merge(
         self, merging_from: str, merging_to: str, message: str = None, author: Union[str, None] = None
     ):
-        msg = message if message else f"Squash and merge {merging_from} into {merging_to}"
-        self.git_repo.git.checkout(merging_to)
-        self.git_repo.git.merge(f"origin/{merging_from}", squash=True)
-        if author:
-            self.git_repo.git.commit(m=msg, author=author)
-        else:
-            self.git_repo.git.commit(m=msg)
-        self.git_repo.git.push("origin", merging_to)
+        pass
 
     def _ssh_wrapped(self, func, **kwargs):
-        private_key = kwargs.pop("private_key", None)
-        if private_key and self._file_path:
-            self._write_private_key(private_key, self._file_path)
-            try:
-                func(**kwargs)
-                os.remove(self._file_path)
-            except Exception as e:
-                os.remove(self._file_path)
-                raise e
-        else:
-            func(**kwargs)
+        pass
 
     def fetch_github_repo(self, private_key: str):
         if self.is_ssh:

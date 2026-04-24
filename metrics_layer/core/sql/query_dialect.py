@@ -38,39 +38,11 @@ class QueryBuilderWithOrderByNullsOption(QueryBuilder):
         :return:
             A copy of the query with the tables replaced.
         """
-        self._from = [new_table if table == current_table else table for table in self._from]
-        self._insert_table = new_table if self._insert_table == current_table else self._insert_table
-        self._update_table = new_table if self._update_table == current_table else self._update_table
-
-        self._with = [alias_query.replace_table(current_table, new_table) for alias_query in self._with]
-        self._selects = [select.replace_table(current_table, new_table) for select in self._selects]
-        self._columns = [column.replace_table(current_table, new_table) for column in self._columns]
-        self._values = [
-            [value.replace_table(current_table, new_table) for value in value_list]
-            for value_list in self._values
-        ]
-
-        self._wheres = self._wheres.replace_table(current_table, new_table) if self._wheres else None
-        self._prewheres = self._prewheres.replace_table(current_table, new_table) if self._prewheres else None
-        self._groupbys = [groupby.replace_table(current_table, new_table) for groupby in self._groupbys]
-        self._havings = self._havings.replace_table(current_table, new_table) if self._havings else None
-        # Adding the slot for nulls first/last is the only change here
-        self._orderbys = [
-            (orderby[0].replace_table(current_table, new_table), orderby[1], orderby[2])
-            for orderby in self._orderbys
-        ]
-        self._joins = [join.replace_table(current_table, new_table) for join in self._joins]
-
-        if current_table in self._select_star_tables:
-            self._select_star_tables.remove(current_table)
-            self._select_star_tables.add(new_table)
+        pass
 
     @builder
     def orderby(self, *fields: Any, **kwargs: Any) -> "QueryBuilder":
-        for field in fields:
-            field = Field(field, table=self._from[0]) if isinstance(field, str) else self.wrap_constant(field)
-
-            self._orderbys.append((field, kwargs.get("order"), kwargs.get("nulls")))
+        pass
 
     def _orderby_sql(
         self,
@@ -91,27 +63,7 @@ class QueryBuilderWithOrderByNullsOption(QueryBuilder):
         is set True then the ORDER BY clause will use
         the alias, otherwise the field will be rendered as SQL.
         """
-        clauses = []
-        selected_aliases = {s.alias for s in self._selects}
-        for field, directionality, nulls in self._orderbys:
-            term = (
-                format_quotes(field.alias, alias_quote_char or quote_char)
-                if orderby_alias and field.alias and field.alias in selected_aliases
-                else field.get_sql(quote_char=quote_char, alias_quote_char=alias_quote_char, **kwargs)
-            )
-
-            if directionality is not None:
-                orient = f" {directionality.value}"
-            else:
-                orient = ""
-
-            if nulls is not None:
-                null_sorting = f" NULLS {nulls.value}"
-            else:
-                null_sorting = ""
-            clauses.append(f"{term}{orient}{null_sorting}")
-
-        return " ORDER BY {orderby}".format(orderby=",".join(clauses))
+        pass
 
 
 class SnowflakeQuery(Query):
@@ -121,7 +73,7 @@ class SnowflakeQuery(Query):
 
     @classmethod
     def _builder(cls, **kwargs) -> "SnowflakeQueryBuilderWithOrderByNullsOption":
-        return SnowflakeQueryBuilderWithOrderByNullsOption(**kwargs)
+        pass
 
 
 class SnowflakeQueryBuilderWithOrderByNullsOption(QueryBuilderWithOrderByNullsOption):
@@ -141,7 +93,7 @@ class MySQLQuery(Query):
 
     @classmethod
     def _builder(cls, **kwargs) -> "MySQLQueryBuilder":
-        return MySQLQueryBuilder(**kwargs)
+        pass
 
 
 class PostgresQuery(Query):
@@ -151,7 +103,7 @@ class PostgresQuery(Query):
 
     @classmethod
     def _builder(cls, **kwargs) -> PostgreSQLQueryBuilder:
-        return PostgreSQLQueryBuilder(**kwargs)
+        pass
 
 
 class PostgresQueryWithOrderByNullsOption(Query):
@@ -161,7 +113,7 @@ class PostgresQueryWithOrderByNullsOption(Query):
 
     @classmethod
     def _builder(cls, **kwargs) -> "PostgreSQLQueryBuilderWithOrderByNullsOption":
-        return PostgreSQLQueryBuilderWithOrderByNullsOption(**kwargs)
+        pass
 
 
 class PostgreSQLQueryBuilderWithOrderByNullsOption(
@@ -177,7 +129,7 @@ class RedshiftQuery(Query):
 
     @classmethod
     def _builder(cls, **kwargs) -> "RedShiftQueryBuilderWithOrderByNullsOption":
-        return RedShiftQueryBuilderWithOrderByNullsOption(dialect=Dialects.REDSHIFT, **kwargs)
+        pass
 
 
 class RedShiftQueryBuilderWithOrderByNullsOption(QueryBuilderWithOrderByNullsOption):
@@ -191,7 +143,7 @@ class MSSQLQueryBuilderCorrectLimit(MSSQLQueryBuilder):
 
     @builder
     def limit(self, limit: int):
-        self._top = limit
+        pass
 
 
 class MSSSQLQuery(Query):
@@ -201,7 +153,7 @@ class MSSSQLQuery(Query):
 
     @classmethod
     def _builder(cls, **kwargs) -> MSSQLQueryBuilderCorrectLimit:
-        return MSSQLQueryBuilderCorrectLimit(**kwargs)
+        pass
 
 
 class TeradataQueryBuilderWithTop(PostgreSQLQueryBuilderWithOrderByNullsOption):
@@ -213,14 +165,10 @@ class TeradataQueryBuilderWithTop(PostgreSQLQueryBuilderWithOrderByNullsOption):
 
     @builder
     def limit(self, limit: int):
-        self._top = limit
+        pass
 
     def _select_sql(self, **kwargs):
-        return "SELECT {distinct}{top}{select}".format(
-            top="TOP {top} ".format(top=self._top) if self._top else "",
-            distinct=self._distinct_sql(**kwargs),
-            select=",".join(term.get_sql(with_alias=True, subquery=True, **kwargs) for term in self._selects),
-        )
+        pass
 
 
 class TeradataQuery(Query):
@@ -230,7 +178,7 @@ class TeradataQuery(Query):
 
     @classmethod
     def _builder(cls, **kwargs) -> TeradataQueryBuilderWithTop:
-        return TeradataQueryBuilderWithTop(**kwargs)
+        pass
 
 
 TeradataQueryBuilderWithTop.QUERY_CLS = TeradataQuery
